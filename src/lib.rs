@@ -1,4 +1,36 @@
-
+//! This crate provides a `Vec` wrapper (`Vec1`) which guarantees to have at last 1 element.
+//!
+//! This can be usefull if you have a API which accepts one ore more ofe a kind. Instead
+//! of accepting a `Vec` and returning an error if it's empty a `Vec1` can be used assuring
+//! there is at last 1 element and through this reducing the number of possible error causes.
+//!
+//! # Example
+//!
+//! ```
+//! #[macro_use]
+//! extern crate vec1;
+//!
+//! use vec1::Vec1;
+//!
+//! fn main() {
+//!     // vec1![] makes sure there is at last one element
+//!     // at compiler time
+//!     //let names = vec1! [ ];
+//!     let names = vec1! [ "Liz" ];
+//!     greet(names);
+//! }
+//!
+//! fn greet(names: Vec1<&str>) {
+//!     // methods like first/last which return a Option on Vec do
+//!     // directly return the value, we know it's possible
+//!     let first = names.first();
+//!     println!("hallo {}", first);
+//!     for name in names.iter().skip(1) {
+//!         println!("  who is also know as {}", name)
+//!     }
+//! }
+//!
+//! ```
 use std::{fmt, vec, slice};
 use std::ops::{ Deref, DerefMut, Index, IndexMut};
 use std::result::{ Result as StdResult };
@@ -6,6 +38,11 @@ use std::error::{ Error as StdError };
 use std::iter::{IntoIterator, Extend};
 use std::borrow::{Borrow, BorrowMut};
 
+/// a macro similar to `vec!` to create a `Vec1`
+///
+/// If it is called with less then 1 element a
+/// compiler error is triggered (using `compile_error`
+/// to make sure you know what went wrong)
 #[macro_export]
 macro_rules! vec1 {
     ( ) => (
@@ -25,7 +62,7 @@ macro_rules! vec1 {
 }
 
 
-
+/// Error returned by operations which would cause Vec1 to have a len of 0
 #[derive(Debug, Hash, Eq, PartialEq, Copy, Clone)]
 pub struct Size0Error;
 
@@ -42,6 +79,28 @@ impl StdError for Size0Error {
 
 type Vec1Result<T> = StdResult<T, Size0Error>;
 
+/// `std::vec::Vec` wrapper which guarantees to have at last 1 element
+///
+/// `Vec1<T>` dereferences to `&[T]` and `&mut [T]` as functionality
+/// exposed through this can not change the length.
+///
+/// Methods of `Vec` which can be called without reducing the length
+/// (e.g. `capacity()`, `reserve()`) are exposed through wrappers
+/// with the same signature.
+///
+/// Methods of `Vec` which could reduce the length to 0 if exposed
+/// are implemented with a `try_` prefix returning a `Result`.
+/// (e.g. `try_pop(&self)`, `try_truncate()`, etc.).
+///
+/// Methods with returned `Option<T>` with `None` if the length was 0
+/// (and do not reduce the length now) now return T. (e.g. `first`,
+/// `last`, `first_mut`, etc.).
+///
+/// All stable traits and methods implemented on `Vec<T>` are _should_ also
+/// be implemented on `Vec1<T>` (except if they make no sense to implement
+/// due to the len 1 gurantee). Note that some small thinks are still missing
+/// e.g. `Vec1` does not implement drain currently as drains generic argument
+/// is `R: RangeArgument<usize>` and `RangeArgument` is not stable.
 #[derive( Debug, Clone, Eq, Hash, PartialOrd, Ord )]
 pub struct Vec1<T>(Vec<T>);
 
@@ -158,11 +217,12 @@ impl<T> Vec1<T> {
 
 
     /// pops if there is _more_ than 1 element in the vector
-    pub fn pop(&mut self) -> Option<T> {
+    pub fn try_pop(&mut self) -> Vec1Result<T> {
         if self.len() > 1 {
-            self.0.pop()
+            //UNWRAP_SAFE: pop on len > 1 can not be none
+            Ok(self.0.pop().unwrap())
         } else {
-            None
+            Err(Size0Error)
         }
     }
 
@@ -186,6 +246,7 @@ macro_rules! impl_wrapper {
     (__PRIV_SELF &self) => (&Self);
 }
 
+// methods in Vec not in &[] which can be directly exposed
 impl_wrapper! {
     pub T>
         fn reserve(&mut self, additional: usize) -> ();
