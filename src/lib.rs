@@ -8,6 +8,9 @@ use std::borrow::{Borrow, BorrowMut};
 
 #[macro_export]
 macro_rules! vec1 {
+    ( ) => (
+        compile_error!("Vec1 needs at last 1 element")
+    );
     ( $first:expr) => (
          $crate::Vec1::new( $first )
     );
