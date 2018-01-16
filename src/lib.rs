@@ -91,6 +91,19 @@ impl<T> Vec1<T> {
         self.0.last_mut().unwrap()
     }
 
+    /// returns a reference to the first element
+    /// as Vec1 contains always at last one element
+    /// there is always a first element
+    pub fn first( &self ) -> &T {
+        //UNWRAP_SAFE: len is at last 1
+        self.0.first().unwrap()
+    }
+
+    pub fn first_mut( &mut self ) -> &mut T {
+        //UNWRAP_SAFE: len is at last 1
+        self.0.first_mut().unwrap()
+    }
+
     pub fn try_truncate(&mut self, len: usize) -> Vec1Result<()> {
         if len > 0 {
             self.0.truncate( len );
