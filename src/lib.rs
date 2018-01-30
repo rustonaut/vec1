@@ -139,6 +139,65 @@ impl<T> Vec1<T> {
         self.0
     }
 
+    /// create a new Vec1 by consuming this vec1 and mapping each element
+    ///
+    /// This is usefull as it keeps the knowledge that the length is >= 1,
+    /// even through the old Vec1 is consumed and turned into an iterator.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # #[macro_use]
+    /// # extern crate vec1;
+    /// # use vec1::Vec1;
+    /// # fn main() {
+    /// let data = vec1![1u8,2,3];
+    ///
+    /// let data = data.mapped(|x|x*2);
+    /// assert_eq!(data, vec![2,4,6]);
+    ///
+    /// //without mapped
+    /// let data = Vec1::from_vec(data.into_iter().map(|x|x*2).collect::<Vec<_>>()).unwrap();
+    /// assert_eq!(data, vec![4,8,12]);
+    /// # }
+    /// ```
+    pub fn mapped<F, N>(self, map_fn: F) -> Vec1<N>
+        where F: FnMut(T) -> N
+    {
+        Vec1(self.into_iter().map(map_fn).collect::<Vec<_>>())
+    }
+
+    /// create a new Vec1 by consuming this vec1 and mapping each element
+    ///
+    /// This is usefull as it keeps the knowledge that the length is >= 1,
+    /// even through the old Vec1 is consumed and turned into an iterator.
+    ///
+    /// # Example
+    ///
+    /// ```
+    /// # #[macro_use]
+    /// # extern crate vec1;
+    /// # use vec1::Vec1;
+    /// # fn main() {
+    /// let data = vec1![1,2,3];
+    ///
+    /// let data: Result<Vec1<u8>, &'static str> = data.try_mapped(|x| Err("failed"));
+    /// assert_eq!(data, Err("failed"));
+    /// # }
+    /// ```
+    pub fn try_mapped<F, N, E>(self, map_fn: F) -> Result<Vec1<N>, E>
+        where F: FnMut(T) -> Result<N, E>
+    {
+        let mut map_fn = map_fn;
+        // ::collect<Result<Vec<_>>>() is uses the iterators size hint's lower bound
+        // for with_capacity, which is 0 as it might fail at the first element
+        let mut out = Vec::with_capacity(self.len());
+        for element in self.into_iter() {
+            out.push(map_fn(element)?);
+        }
+        Ok(Vec1(out))
+    }
+
 
     /// returns a reference to the last element
     /// as Vec1 contains always at last one element
@@ -552,8 +611,8 @@ mod test {
             assert_err!(vec.try_remove(0));
             vec.push(12);
 
-            assert_eq!(vec.pop(), Some(12));
-            assert_eq!(vec.pop(), None);
+            assert_eq!(vec.try_pop(), Ok(12));
+            assert_eq!(vec.try_pop(), Err(Size0Error));
             assert_eq!(vec, &[2]);
 
         }
