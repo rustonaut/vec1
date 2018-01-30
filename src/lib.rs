@@ -135,6 +135,7 @@ impl<T> Vec1<T> {
         Vec1( vec )
     }
 
+    /// turns this Vec1 into a Vec
     pub fn into_vec( self ) -> Vec<T> {
         self.0
     }
