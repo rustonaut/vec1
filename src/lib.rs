@@ -168,6 +168,26 @@ impl<T> Vec1<T> {
         Vec1(self.into_iter().map(map_fn).collect::<Vec<_>>())
     }
 
+    /// create a new Vec1 by mapping references to elements of this vec1
+    ///
+    /// The benefit to this compared to the Iterator map is, that it's know
+    /// that the legnth will still be >= 1 when crating a the new vec1
+    pub fn mapped_ref<F, N>(&self, map_fn: F) -> Vec1<N>
+        where F: FnMut(&T) -> N
+    {
+        Vec1(self.iter().map(map_fn).collect::<Vec<_>>())
+    }
+
+    /// create a new Vec1 by mapping mutable references to elements of this vec1
+    ///
+    /// The benefit to this compared to the Iterator map is, that it's know
+    /// that the legnth will still be >= 1 when crating a the new vec1
+    pub fn mapped_mut<F, N>(&mut self, map_fn: F) -> Vec1<N>
+        where F: FnMut(&mut T) -> N
+    {
+        Vec1(self.iter_mut().map(map_fn).collect::<Vec<_>>())
+    }
+
     /// create a new Vec1 by consuming this vec1 and mapping each element
     ///
     /// This is usefull as it keeps the knowledge that the length is >= 1,
@@ -194,6 +214,36 @@ impl<T> Vec1<T> {
         // for with_capacity, which is 0 as it might fail at the first element
         let mut out = Vec::with_capacity(self.len());
         for element in self.into_iter() {
+            out.push(map_fn(element)?);
+        }
+        Ok(Vec1(out))
+    }
+
+    /// create a new Vec1 by mapping references to elements of this vec1 in a fallible way
+    ///
+    /// The benefit to this compared to the Iterator map is, that it's know
+    /// that the legnth will still be >= 1 when crating a the new vec1
+    pub fn try_mapped_ref<F, N, E>(&self, map_fn: F) -> Result<Vec1<N>, E>
+        where F: FnMut(&T) -> Result<N, E>
+    {
+        let mut map_fn = map_fn;
+        let mut out = Vec::with_capacity(self.len());
+        for element in self.iter() {
+            out.push(map_fn(element)?);
+        }
+        Ok(Vec1(out))
+    }
+
+    /// create a new Vec1 by mapping mutable references to elements of this vec1 in a fallible way
+    ///
+    /// The benefit to this compared to the Iterator map is, that it's know
+    /// that the legnth will still be >= 1 when crating a the new vec1
+    pub fn try_mapped_mut<F, N, E>(&mut self, map_fn: F) -> Result<Vec1<N>, E>
+        where F: FnMut(&mut T) -> Result<N, E>
+    {
+        let mut map_fn = map_fn;
+        let mut out = Vec::with_capacity(self.len());
+        for element in self.iter_mut() {
             out.push(map_fn(element)?);
         }
         Ok(Vec1(out))
