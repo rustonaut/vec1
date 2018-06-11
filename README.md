@@ -1,9 +1,9 @@
-vec1 [![Crates.io](https://img.shields.io/crates/v/vec1.svg)](https://crates.io/crates/vec1) [![vec1](https://docs.rs/vec1/badge.svg)](https://docs.rs/vec1) [![License](https://img.shields.io/badge/License-MIT%2FApache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+vec1 [![Crates.io](https://img.shields.io/crates/v/vec1.svg)](https://crates.io/crates/vec1) [![vec1](https://docs.rs/vec1/badge.svg)](https://docs.rs/vec1) [![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT) [![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 =============
 
 This crate provides a rust `std::vec::Vec` wrapper with type
-guarantees to contain at last 1 element. This is usefull if
-you build a API which somtimes has such constraints e.g. you
+guarantees to contain at last 1 element. This is useful if
+you build a API which sometimes has such constraints e.g. you
 need at last one target server address but there can be more.
 
 Example
