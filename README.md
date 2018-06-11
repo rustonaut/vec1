@@ -1,4 +1,4 @@
-vec1 [![Crates.io](https://img.shields.io/crates/v/vec1.svg)](https://crates.io/crates/vec1) [![vec1](https://docs.rs/vec1/badge.svg)](https://docs.rs/vec1) [![License](https://img.shields.io/badge/License-MIT%2FApache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0) [![Build Status](https://travis-ci.org/1aim/vec1.svg?branch=master)](https://travis-ci.org/1aim/vec1)
+vec1 [![Crates.io](https://img.shields.io/crates/v/vec1.svg)](https://crates.io/crates/vec1) [![vec1](https://docs.rs/vec1/badge.svg)](https://docs.rs/vec1) [![License](https://img.shields.io/badge/License-MIT%2FApache%202.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
 =============
 
 This crate provides a rust `std::vec::Vec` wrapper with type
@@ -39,8 +39,8 @@ License
 =======
 Licensed under either of
 
- * Apache License, Version 2.0, ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
- * MIT license ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
+- Apache License, Version 2.0, ([LICENSE-APACHE](LICENSE-APACHE) or http://www.apache.org/licenses/LICENSE-2.0)
+- MIT license ([LICENSE-MIT](LICENSE-MIT) or http://opensource.org/licenses/MIT)
 
 at your option.
 

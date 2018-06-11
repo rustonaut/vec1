@@ -1,7 +1,7 @@
 [package]
 authors = ["Philipp Korber <p.korber@1aim.com>"]
 categories = []
-description = "TODO"
+description = "a std Vec wrapper assuring that it has at last 1 element"
 documentation = "https://docs.rs/vec1"
 keywords = ["vec", "min", "length", "1"]
 license = "MIT OR Apache-2.0"

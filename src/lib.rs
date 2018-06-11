@@ -1,8 +1,9 @@
 //! This crate provides a `Vec` wrapper (`Vec1`) which guarantees to have at last 1 element.
 //!
-//! This can be usefull if you have a API which accepts one ore more ofe a kind. Instead
-//! of accepting a `Vec` and returning an error if it's empty a `Vec1` can be used assuring
-//! there is at last 1 element and through this reducing the number of possible error causes.
+//! This can be useful if you have a API which accepts one ore more ofe a kind.
+//! Instead of accepting a `Vec` and returning an error if it's empty a `Vec1`
+//! can be used assuring there is at last 1 element and through this reducing
+//! the number of possible error causes.
 //!
 //! # Example
 //!
@@ -13,8 +14,8 @@
 //! use vec1::Vec1;
 //!
 //! fn main() {
-//!     // vec1![] makes sure there is at last one element
-//!     // at compiler time
+//!     // vec1![] makes sure at compiler time
+//!     // there is at last one element
 //!     //let names = vec1! [ ];
 //!     let names = vec1! [ "Liz" ];
 //!     greet(names);
@@ -86,17 +87,17 @@ type Vec1Result<T> = StdResult<T, Size0Error>;
 ///
 /// Methods of `Vec` which can be called without reducing the length
 /// (e.g. `capacity()`, `reserve()`) are exposed through wrappers
-/// with the same signature.
+/// with the same function signature.
 ///
-/// Methods of `Vec` which could reduce the length to 0 if exposed
+/// Methods of `Vec` which could reduce the length to 0
 /// are implemented with a `try_` prefix returning a `Result`.
 /// (e.g. `try_pop(&self)`, `try_truncate()`, etc.).
 ///
 /// Methods with returned `Option<T>` with `None` if the length was 0
-/// (and do not reduce the length now) now return T. (e.g. `first`,
+/// (and do not reduce the length) now return T. (e.g. `first`,
 /// `last`, `first_mut`, etc.).
 ///
-/// All stable traits and methods implemented on `Vec<T>` are _should_ also
+/// All stable traits and methods implemented on `Vec<T>` _should_ also
 /// be implemented on `Vec1<T>` (except if they make no sense to implement
 /// due to the len 1 gurantee). Note that some small thinks are still missing
 /// e.g. `Vec1` does not implement drain currently as drains generic argument
@@ -190,7 +191,7 @@ impl<T> Vec1<T> {
 
     /// create a new Vec1 by consuming this vec1 and mapping each element
     ///
-    /// This is usefull as it keeps the knowledge that the length is >= 1,
+    /// This is useful as it keeps the knowledge that the length is >= 1,
     /// even through the old Vec1 is consumed and turned into an iterator.
     ///
     /// # Example
@@ -222,7 +223,7 @@ impl<T> Vec1<T> {
     /// create a new Vec1 by mapping references to elements of this vec1 in a fallible way
     ///
     /// The benefit to this compared to the Iterator map is, that it's know
-    /// that the legnth will still be >= 1 when crating a the new vec1
+    /// that the length will still be >= 1 when crating a the new vec1
     pub fn try_mapped_ref<F, N, E>(&self, map_fn: F) -> Result<Vec1<N>, E>
         where F: FnMut(&T) -> Result<N, E>
     {
@@ -237,7 +238,7 @@ impl<T> Vec1<T> {
     /// create a new Vec1 by mapping mutable references to elements of this vec1 in a fallible way
     ///
     /// The benefit to this compared to the Iterator map is, that it's know
-    /// that the legnth will still be >= 1 when crating a the new vec1
+    /// that the length will still be >= 1 when crating a the new vec1
     pub fn try_mapped_mut<F, N, E>(&mut self, map_fn: F) -> Result<Vec1<N>, E>
         where F: FnMut(&mut T) -> Result<N, E>
     {
