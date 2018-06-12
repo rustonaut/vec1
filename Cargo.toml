@@ -1,14 +1,14 @@
 [package]
 authors = ["Philipp Korber <p.korber@1aim.com>"]
-categories = []
+categories = ["data-structures"]
 description = "a std Vec wrapper assuring that it has at last 1 element"
 documentation = "https://docs.rs/vec1"
 keywords = ["vec", "min", "length", "1"]
 license = "MIT OR Apache-2.0"
 name = "vec1"
 readme = "./README.md"
-repository = "https://github.com/1aim/mail-codec/"
-version = "1.0.0"
+repository = "https://github.com/1aim/vec1/"
+version = "1.0.1"
 
 [dependencies]
 
