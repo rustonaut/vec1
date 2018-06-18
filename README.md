@@ -2,7 +2,7 @@ vec1 [![Crates.io](https://img.shields.io/crates/v/vec1.svg)](https://crates.io/
 =============
 
 This crate provides a rust `std::vec::Vec` wrapper with type
-guarantees to contain at last 1 element. This is useful if
+guarantees to contain at least 1 element. This is useful if
 you build a API which sometimes has such constraints e.g. you
 need at last one target server address but there can be more.
 
