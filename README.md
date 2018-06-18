@@ -4,7 +4,7 @@ vec1 [![Crates.io](https://img.shields.io/crates/v/vec1.svg)](https://crates.io/
 This crate provides a rust `std::vec::Vec` wrapper with type
 guarantees to contain at least 1 element. This is useful if
 you build a API which sometimes has such constraints e.g. you
-need at last one target server address but there can be more.
+need at least one target server address but there can be more.
 
 Example
 --------
@@ -16,7 +16,7 @@ extern crate vec1;
 use vec1::Vec1;
 
 fn main() {
-    // vec1![] makes sure there is at last one element
+    // vec1![] makes sure there is at least one element
     // at compiler time
     //let names = vec1! [ ];
     let names = vec1! [ "Liz" ];

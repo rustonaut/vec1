@@ -1,8 +1,8 @@
-//! This crate provides a `Vec` wrapper (`Vec1`) which guarantees to have at last 1 element.
+//! This crate provides a `Vec` wrapper (`Vec1`) which guarantees to have at least 1 element.
 //!
 //! This can be useful if you have a API which accepts one ore more ofe a kind.
 //! Instead of accepting a `Vec` and returning an error if it's empty a `Vec1`
-//! can be used assuring there is at last 1 element and through this reducing
+//! can be used assuring there is at least 1 element and through this reducing
 //! the number of possible error causes.
 //!
 //! # Example
@@ -15,7 +15,7 @@
 //!
 //! fn main() {
 //!     // vec1![] makes sure at compiler time
-//!     // there is at last one element
+//!     // there is at least one element
 //!     //let names = vec1! [ ];
 //!     let names = vec1! [ "Liz" ];
 //!     greet(names);
@@ -47,7 +47,7 @@ use std::borrow::{Borrow, BorrowMut};
 #[macro_export]
 macro_rules! vec1 {
     ( ) => (
-        compile_error!("Vec1 needs at last 1 element")
+        compile_error!("Vec1 needs at least 1 element")
     );
     ( $first:expr) => (
          $crate::Vec1::new( $first )
@@ -80,7 +80,7 @@ impl StdError for Size0Error {
 
 type Vec1Result<T> = StdResult<T, Size0Error>;
 
-/// `std::vec::Vec` wrapper which guarantees to have at last 1 element
+/// `std::vec::Vec` wrapper which guarantees to have at least 1 element
 ///
 /// `Vec1<T>` dereferences to `&[T]` and `&mut [T]` as functionality
 /// exposed through this can not change the length.
@@ -252,28 +252,28 @@ impl<T> Vec1<T> {
 
 
     /// returns a reference to the last element
-    /// as Vec1 contains always at last one element
+    /// as Vec1 contains always at least one element
     /// there is always a last element
     pub fn last( &self ) -> &T {
-        //UNWRAP_SAFE: len is at last 1
+        //UNWRAP_SAFE: len is at least 1
         self.0.last().unwrap()
     }
 
     pub fn last_mut( &mut self ) -> &mut T {
-        //UNWRAP_SAFE: len is at last 1
+        //UNWRAP_SAFE: len is at least 1
         self.0.last_mut().unwrap()
     }
 
     /// returns a reference to the first element
-    /// as Vec1 contains always at last one element
+    /// as Vec1 contains always at least one element
     /// there is always a first element
     pub fn first( &self ) -> &T {
-        //UNWRAP_SAFE: len is at last 1
+        //UNWRAP_SAFE: len is at least 1
         self.0.first().unwrap()
     }
 
     pub fn first_mut( &mut self ) -> &mut T {
-        //UNWRAP_SAFE: len is at last 1
+        //UNWRAP_SAFE: len is at least 1
         self.0.first_mut().unwrap()
     }
 
