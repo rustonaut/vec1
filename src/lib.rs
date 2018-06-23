@@ -39,11 +39,11 @@ use std::error::{ Error as StdError };
 use std::iter::{IntoIterator, Extend};
 use std::borrow::{Borrow, BorrowMut};
 
-/// a macro similar to `vec!` to create a `Vec1`
+/// A macro similar to `vec!` to create a `Vec1`.
 ///
 /// If it is called with less then 1 element a
 /// compiler error is triggered (using `compile_error`
-/// to make sure you know what went wrong)
+/// to make sure you know what went wrong).
 #[macro_export]
 macro_rules! vec1 {
     ( ) => (
@@ -63,7 +63,7 @@ macro_rules! vec1 {
 }
 
 
-/// Error returned by operations which would cause Vec1 to have a len of 0
+/// Error returned by operations which would cause `Vec1` to have a length of 0.
 #[derive(Debug, Hash, Eq, PartialEq, Copy, Clone)]
 pub struct Size0Error;
 
@@ -80,7 +80,7 @@ impl StdError for Size0Error {
 
 type Vec1Result<T> = StdResult<T, Size0Error>;
 
-/// `std::vec::Vec` wrapper which guarantees to have at least 1 element
+/// `std::vec::Vec` wrapper which guarantees to have at least 1 element.
 ///
 /// `Vec1<T>` dereferences to `&[T]` and `&mut [T]` as functionality
 /// exposed through this can not change the length.
@@ -136,15 +136,15 @@ impl<T> Vec1<T> {
         Vec1( vec )
     }
 
-    /// turns this Vec1 into a Vec
+    /// Turns this `Vec1` into a `Vec`.
     pub fn into_vec( self ) -> Vec<T> {
         self.0
     }
 
-    /// create a new Vec1 by consuming this vec1 and mapping each element
+    /// Create a new `Vec1` by consuming `self` and mapping each element.
     ///
-    /// This is usefull as it keeps the knowledge that the length is >= 1,
-    /// even through the old Vec1 is consumed and turned into an iterator.
+    /// This is useful as it keeps the knowledge that the length is >= 1,
+    /// even through the old `Vec1` is consumed and turned into an iterator.
     ///
     /// # Example
     ///
@@ -158,7 +158,7 @@ impl<T> Vec1<T> {
     /// let data = data.mapped(|x|x*2);
     /// assert_eq!(data, vec![2,4,6]);
     ///
-    /// //without mapped
+    /// // without mapped
     /// let data = Vec1::from_vec(data.into_iter().map(|x|x*2).collect::<Vec<_>>()).unwrap();
     /// assert_eq!(data, vec![4,8,12]);
     /// # }
@@ -169,30 +169,31 @@ impl<T> Vec1<T> {
         Vec1(self.into_iter().map(map_fn).collect::<Vec<_>>())
     }
 
-    /// create a new Vec1 by mapping references to elements of this vec1
+    /// Create a new `Vec1` by mapping references to the elements of `self`.
     ///
-    /// The benefit to this compared to the Iterator map is, that it's know
-    /// that the legnth will still be >= 1 when crating a the new vec1
+    /// The benefit to this compared to `Iterator::map` is that it's known
+    /// that the length will still be at least 1 when creating the new `Vec1`.
     pub fn mapped_ref<F, N>(&self, map_fn: F) -> Vec1<N>
         where F: FnMut(&T) -> N
     {
         Vec1(self.iter().map(map_fn).collect::<Vec<_>>())
     }
 
-    /// create a new Vec1 by mapping mutable references to elements of this vec1
+    /// Create a new `Vec1` by mapping mutable references to the elements of `self`.
     ///
-    /// The benefit to this compared to the Iterator map is, that it's know
-    /// that the legnth will still be >= 1 when crating a the new vec1
+    /// The benefit to this compared to `Iterator::map` is that it's known
+    /// that the length will still be at least 1 when creating the new `Vec1`.
     pub fn mapped_mut<F, N>(&mut self, map_fn: F) -> Vec1<N>
         where F: FnMut(&mut T) -> N
     {
         Vec1(self.iter_mut().map(map_fn).collect::<Vec<_>>())
     }
 
-    /// create a new Vec1 by consuming this vec1 and mapping each element
+    /// Create a new `Vec1` by consuming `self` and mapping each element
+    /// to a `Result`.
     ///
     /// This is useful as it keeps the knowledge that the length is >= 1,
-    /// even through the old Vec1 is consumed and turned into an iterator.
+    /// even through the old `Vec1` is consumed and turned into an iterator.
     ///
     /// # Example
     ///
@@ -220,10 +221,11 @@ impl<T> Vec1<T> {
         Ok(Vec1(out))
     }
 
-    /// create a new Vec1 by mapping references to elements of this vec1 in a fallible way
+    /// Create a new `Vec1` by mapping references to the elements of `self`
+    /// to `Result`s.
     ///
-    /// The benefit to this compared to the Iterator map is, that it's know
-    /// that the length will still be >= 1 when crating a the new vec1
+    /// The benefit to this compared to `Iterator::map` is that it's known
+    /// that the length will still be at least 1 when creating the new `Vec1`.
     pub fn try_mapped_ref<F, N, E>(&self, map_fn: F) -> Result<Vec1<N>, E>
         where F: FnMut(&T) -> Result<N, E>
     {
@@ -235,10 +237,11 @@ impl<T> Vec1<T> {
         Ok(Vec1(out))
     }
 
-    /// create a new Vec1 by mapping mutable references to elements of this vec1 in a fallible way
+    /// Create a new `Vec1` by mapping mutable references to the elements of
+    /// `self` to `Result`s.
     ///
-    /// The benefit to this compared to the Iterator map is, that it's know
-    /// that the length will still be >= 1 when crating a the new vec1
+    /// The benefit to this compared to `Iterator::map` is that it's known
+    /// that the length will still be at least 1 when creating the new `Vec1`.
     pub fn try_mapped_mut<F, N, E>(&mut self, map_fn: F) -> Result<Vec1<N>, E>
         where F: FnMut(&mut T) -> Result<N, E>
     {
@@ -250,28 +253,33 @@ impl<T> Vec1<T> {
         Ok(Vec1(out))
     }
 
-
-    /// returns a reference to the last element
-    /// as Vec1 contains always at least one element
-    /// there is always a last element
+    /// Returns a reference to the last element.
+    ///
+    /// As `Vec1` always contains at least one element there is always a last element.
     pub fn last( &self ) -> &T {
         //UNWRAP_SAFE: len is at least 1
         self.0.last().unwrap()
     }
 
+    /// Returns a mutable reference to the last element.
+    ///
+    /// As `Vec1` always contains at least one element there is always a last element.
     pub fn last_mut( &mut self ) -> &mut T {
         //UNWRAP_SAFE: len is at least 1
         self.0.last_mut().unwrap()
     }
 
-    /// returns a reference to the first element
-    /// as Vec1 contains always at least one element
-    /// there is always a first element
+    /// Returns a reference to the first element.
+    ///
+    /// As `Vec1` always contains at least one element there is always a first element.
     pub fn first( &self ) -> &T {
         //UNWRAP_SAFE: len is at least 1
         self.0.first().unwrap()
     }
 
+    /// Returns a mutable reference to the first element.
+    ///
+    /// As `Vec1` always contains at least one element there is always a first element.
     pub fn first_mut( &mut self ) -> &mut T {
         //UNWRAP_SAFE: len is at least 1
         self.0.first_mut().unwrap()
@@ -327,7 +335,10 @@ impl<T> Vec1<T> {
     }
 
 
-    /// pops if there is _more_ than 1 element in the vector
+    /// Tries to remove the last element from the `Vec1`.
+    ///
+    /// Returns an error if the length is currently 1 (so the `try_pop` would reduce
+    /// the length to 0).
     pub fn try_pop(&mut self) -> Vec1Result<T> {
         if self.len() > 1 {
             //UNWRAP_SAFE: pop on len > 1 can not be none
