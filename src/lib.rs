@@ -5,6 +5,9 @@
 //! can be used assuring there is at least 1 element and through this reducing
 //! the number of possible error causes.
 //!
+//! The crate provides an optional `serde` feature, which provides
+//! implementations of `serde::Serialize`/`serde::Deserialize`.
+//!
 //! # Example
 //!
 //! ```
@@ -32,6 +35,12 @@
 //! }
 //!
 //! ```
+#[cfg(feature = "serde")]
+#[macro_use]
+extern crate serde;
+#[cfg(all(feature = "serde", test))]
+extern crate serde_json;
+
 use std::{fmt, vec, slice};
 use std::ops::{ Deref, DerefMut, Index, IndexMut};
 use std::result::{ Result as StdResult };
@@ -103,6 +112,7 @@ type Vec1Result<T> = StdResult<T, Size0Error>;
 /// e.g. `Vec1` does not implement drain currently as drains generic argument
 /// is `R: RangeArgument<usize>` and `RangeArgument` is not stable.
 #[derive( Debug, Clone, Eq, Hash, PartialOrd, Ord )]
+#[cfg_attr( feature = "serde", derive( Serialize ) )]
 pub struct Vec1<T>(Vec<T>);
 
 impl<T> IntoIterator for Vec1<T> {
@@ -550,6 +560,24 @@ impl<'a, T> IntoIterator for &'a mut Vec1<T> {
     }
 }
 
+#[cfg(feature = "serde")]
+impl<'de, T> ::serde::Deserialize<'de> for Vec1<T>
+    where
+        T: ::serde::Deserialize<'de>
+{
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: ::serde::Deserializer<'de>,
+    {
+        use serde::de::Error;
+
+        let v = Vec::deserialize(deserializer)?;
+        let v1 = Vec1::from_vec(v)
+            .map_err(|_| D::Error::custom("Could not deserialize Vec1 with no elements"))?;
+
+        Ok(v1)
+    }
+}
 
 #[cfg(test)]
 mod test {
@@ -778,12 +806,12 @@ mod test {
         #[test]
         fn impl_into_iter() {
             let vec = vec1![ 1, 2, 3];
-            assert_eq!(6, vec.into_iter().sum());
+            assert_eq!(6, vec.into_iter().sum::<u8>());
         }
         #[test]
         fn impl_into_iter_on_ref() {
             let vec = vec1![ 1, 2, 3];
-            assert_eq!(6, (&vec).into_iter().sum());
+            assert_eq!(6, (&vec).into_iter().sum::<u8>());
         }
         #[test]
         fn impl_into_iter_on_ref_mut() {
@@ -799,6 +827,33 @@ mod test {
         fn non_slice_indexing_works() {
             let mut vec = vec1!["a"];
             assert_eq!(&mut vec[0], &mut "a");
+        }
+
+        #[cfg(feature = "serde")]
+        mod serde {
+            use super::super::super::*;
+
+            #[test]
+            fn empty() {
+                let result: Result<Vec1<u8>, _> = serde_json::from_str("[]");
+                assert!(result.is_err());
+            }
+
+            #[test]
+            fn one_element() {
+                let vec: Vec1<u8> = serde_json::from_str("[1]").unwrap();
+                assert_eq!(vec, vec1![1]);
+                let json = serde_json::to_string(&vec).unwrap();
+                assert_eq!(json, "[1]");
+            }
+
+            #[test]
+            fn multiple_elements() {
+                let vec: Vec1<u8> = serde_json::from_str("[1, 2, 3]").unwrap();
+                assert_eq!(vec, vec1![1, 2, 3]);
+                let json = serde_json::to_string(&vec).unwrap();
+                assert_eq!(json, "[1,2,3]");
+            }
         }
 
 
