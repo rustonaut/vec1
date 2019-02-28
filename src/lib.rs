@@ -132,11 +132,11 @@ impl<T> Vec1<T> {
         Vec1( vec![ first ] )
     }
 
-    pub fn from_vec( vec: Vec<T> ) -> StdResult<Self, Vec<T>> {
+    pub fn from_vec( vec: Vec<T> ) -> Option<Self> {
         if vec.len() > 0 {
-            Ok( Vec1( vec ) )
+            Some( Vec1( vec ) )
         } else {
-            Err( vec )
+            None
         }
     }
 
