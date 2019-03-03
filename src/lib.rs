@@ -77,12 +77,12 @@ pub struct Size0Error;
 
 impl fmt::Display for Size0Error {
     fn fmt(&self, fter: &mut fmt::Formatter) -> fmt::Result {
-        write!(fter, "{:?}", self)
+        write!(fter, "{}", self.description())
     }
 }
 impl StdError for Size0Error {
     fn description(&self) -> &str {
-        "failing function call would have reduced the size of a Vec1 to 0, which is not allowed"
+        "Can not produce a Vec1 with a length of zero."
     }
 }
 
@@ -128,11 +128,11 @@ impl<T> Vec1<T> {
         Vec1(vec![first])
     }
 
-    pub fn from_vec(vec: Vec<T>) -> Option<Self> {
+    pub fn from_vec(vec: Vec<T>) -> Vec1Result<Self> {
         if vec.len() > 0 {
-            Some(Vec1(vec))
+            Ok(Vec1(vec))
         } else {
-            None
+            Err(Size0Error)
         }
     }
 
