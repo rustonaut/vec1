@@ -41,12 +41,12 @@ extern crate serde;
 #[cfg(all(feature = "serde", test))]
 extern crate serde_json;
 
-use std::{fmt, vec, slice};
-use std::ops::{ Deref, DerefMut, Index, IndexMut};
-use std::result::{ Result as StdResult };
-use std::error::{ Error as StdError };
-use std::iter::{IntoIterator, Extend};
 use std::borrow::{Borrow, BorrowMut};
+use std::error::Error as StdError;
+use std::iter::{Extend, IntoIterator};
+use std::ops::{Deref, DerefMut, Index, IndexMut};
+use std::result::Result as StdResult;
+use std::{fmt, slice, vec};
 
 /// A macro similar to `vec!` to create a `Vec1`.
 ///
@@ -55,30 +55,29 @@ use std::borrow::{Borrow, BorrowMut};
 /// to make sure you know what went wrong).
 #[macro_export]
 macro_rules! vec1 {
-    ( ) => (
+    () => (
         compile_error!("Vec1 needs at least 1 element")
     );
-    ( $first:expr) => (
-         $crate::Vec1::new( $first )
+    ($first:expr) => (
+         $crate::Vec1::new($first)
     );
-    ( $first:expr,) => (
-         $crate::Vec1::new( $first )
+    ($first:expr,) => (
+         $crate::Vec1::new($first)
     );
-    ( $first:expr, $($item:expr),* ) => ({
-        let mut tmp = $crate::Vec1::new( $first );
-        $( tmp.push( $item ); )*
+    ($first:expr, $($item:expr),*) => ({
+        let mut tmp = $crate::Vec1::new($first);
+        $(tmp.push($item);)*
         tmp
     });
 }
-
 
 /// Error returned by operations which would cause `Vec1` to have a length of 0.
 #[derive(Debug, Hash, Eq, PartialEq, Copy, Clone)]
 pub struct Size0Error;
 
 impl fmt::Display for Size0Error {
-    fn fmt( &self, fter: &mut fmt::Formatter ) -> fmt::Result {
-        write!( fter, "{:?}", self )
+    fn fmt(&self, fter: &mut fmt::Formatter) -> fmt::Result {
+        write!(fter, "{:?}", self)
     }
 }
 impl StdError for Size0Error {
@@ -111,43 +110,40 @@ type Vec1Result<T> = StdResult<T, Size0Error>;
 /// due to the len 1 gurantee). Note that some small thinks are still missing
 /// e.g. `Vec1` does not implement drain currently as drains generic argument
 /// is `R: RangeArgument<usize>` and `RangeArgument` is not stable.
-#[derive( Debug, Clone, Eq, Hash, PartialOrd, Ord )]
-#[cfg_attr( feature = "serde", derive( Serialize ) )]
+#[derive(Debug, Clone, Eq, Hash, PartialOrd, Ord)]
+#[cfg_attr(feature = "serde", derive(Serialize))]
 pub struct Vec1<T>(Vec<T>);
 
 impl<T> IntoIterator for Vec1<T> {
     type Item = T;
     type IntoIter = vec::IntoIter<T>;
 
-    fn into_iter( self ) -> Self::IntoIter {
+    fn into_iter(self) -> Self::IntoIter {
         self.0.into_iter()
     }
-
 }
 
 impl<T> Vec1<T> {
-
-
-    pub fn new( first: T  ) -> Self {
-        Vec1( vec![ first ] )
+    pub fn new(first: T) -> Self {
+        Vec1(vec![first])
     }
 
-    pub fn from_vec( vec: Vec<T> ) -> Option<Self> {
+    pub fn from_vec(vec: Vec<T>) -> Option<Self> {
         if vec.len() > 0 {
-            Some( Vec1( vec ) )
+            Some(Vec1(vec))
         } else {
             None
         }
     }
 
-    pub fn with_capacity( first: T, capacity: usize ) -> Self {
-        let mut vec = Vec::with_capacity( capacity );
-        vec.push( first );
-        Vec1( vec )
+    pub fn with_capacity(first: T, capacity: usize) -> Self {
+        let mut vec = Vec::with_capacity(capacity);
+        vec.push(first);
+        Vec1(vec)
     }
 
     /// Turns this `Vec1` into a `Vec`.
-    pub fn into_vec( self ) -> Vec<T> {
+    pub fn into_vec(self) -> Vec<T> {
         self.0
     }
 
@@ -174,7 +170,8 @@ impl<T> Vec1<T> {
     /// # }
     /// ```
     pub fn mapped<F, N>(self, map_fn: F) -> Vec1<N>
-        where F: FnMut(T) -> N
+    where
+        F: FnMut(T) -> N,
     {
         Vec1(self.into_iter().map(map_fn).collect::<Vec<_>>())
     }
@@ -184,7 +181,8 @@ impl<T> Vec1<T> {
     /// The benefit to this compared to `Iterator::map` is that it's known
     /// that the length will still be at least 1 when creating the new `Vec1`.
     pub fn mapped_ref<F, N>(&self, map_fn: F) -> Vec1<N>
-        where F: FnMut(&T) -> N
+    where
+        F: FnMut(&T) -> N,
     {
         Vec1(self.iter().map(map_fn).collect::<Vec<_>>())
     }
@@ -194,7 +192,8 @@ impl<T> Vec1<T> {
     /// The benefit to this compared to `Iterator::map` is that it's known
     /// that the length will still be at least 1 when creating the new `Vec1`.
     pub fn mapped_mut<F, N>(&mut self, map_fn: F) -> Vec1<N>
-        where F: FnMut(&mut T) -> N
+    where
+        F: FnMut(&mut T) -> N,
     {
         Vec1(self.iter_mut().map(map_fn).collect::<Vec<_>>())
     }
@@ -219,7 +218,8 @@ impl<T> Vec1<T> {
     /// # }
     /// ```
     pub fn try_mapped<F, N, E>(self, map_fn: F) -> Result<Vec1<N>, E>
-        where F: FnMut(T) -> Result<N, E>
+    where
+        F: FnMut(T) -> Result<N, E>,
     {
         let mut map_fn = map_fn;
         // ::collect<Result<Vec<_>>>() is uses the iterators size hint's lower bound
@@ -237,7 +237,8 @@ impl<T> Vec1<T> {
     /// The benefit to this compared to `Iterator::map` is that it's known
     /// that the length will still be at least 1 when creating the new `Vec1`.
     pub fn try_mapped_ref<F, N, E>(&self, map_fn: F) -> Result<Vec1<N>, E>
-        where F: FnMut(&T) -> Result<N, E>
+    where
+        F: FnMut(&T) -> Result<N, E>,
     {
         let mut map_fn = map_fn;
         let mut out = Vec::with_capacity(self.len());
@@ -253,7 +254,8 @@ impl<T> Vec1<T> {
     /// The benefit to this compared to `Iterator::map` is that it's known
     /// that the length will still be at least 1 when creating the new `Vec1`.
     pub fn try_mapped_mut<F, N, E>(&mut self, map_fn: F) -> Result<Vec1<N>, E>
-        where F: FnMut(&mut T) -> Result<N, E>
+    where
+        F: FnMut(&mut T) -> Result<N, E>,
     {
         let mut map_fn = map_fn;
         let mut out = Vec::with_capacity(self.len());
@@ -266,7 +268,7 @@ impl<T> Vec1<T> {
     /// Returns a reference to the last element.
     ///
     /// As `Vec1` always contains at least one element there is always a last element.
-    pub fn last( &self ) -> &T {
+    pub fn last(&self) -> &T {
         //UNWRAP_SAFE: len is at least 1
         self.0.last().unwrap()
     }
@@ -274,7 +276,7 @@ impl<T> Vec1<T> {
     /// Returns a mutable reference to the last element.
     ///
     /// As `Vec1` always contains at least one element there is always a last element.
-    pub fn last_mut( &mut self ) -> &mut T {
+    pub fn last_mut(&mut self) -> &mut T {
         //UNWRAP_SAFE: len is at least 1
         self.0.last_mut().unwrap()
     }
@@ -282,7 +284,7 @@ impl<T> Vec1<T> {
     /// Returns a reference to the first element.
     ///
     /// As `Vec1` always contains at least one element there is always a first element.
-    pub fn first( &self ) -> &T {
+    pub fn first(&self) -> &T {
         //UNWRAP_SAFE: len is at least 1
         self.0.first().unwrap()
     }
@@ -290,33 +292,33 @@ impl<T> Vec1<T> {
     /// Returns a mutable reference to the first element.
     ///
     /// As `Vec1` always contains at least one element there is always a first element.
-    pub fn first_mut( &mut self ) -> &mut T {
+    pub fn first_mut(&mut self) -> &mut T {
         //UNWRAP_SAFE: len is at least 1
         self.0.first_mut().unwrap()
     }
 
     pub fn try_truncate(&mut self, len: usize) -> Vec1Result<()> {
         if len > 0 {
-            self.0.truncate( len );
-            Ok( () )
+            self.0.truncate(len);
+            Ok(())
         } else {
-            Err( Size0Error )
+            Err(Size0Error)
         }
     }
 
     pub fn try_swap_remove(&mut self, index: usize) -> Vec1Result<T> {
         if self.len() > 1 {
-            Ok( self.0.swap_remove( index ) )
+            Ok(self.0.swap_remove(index))
         } else {
-            Err( Size0Error )
+            Err(Size0Error)
         }
     }
 
-    pub fn try_remove( &mut self, index: usize ) -> Vec1Result<T> {
+    pub fn try_remove(&mut self, index: usize) -> Vec1Result<T> {
         if self.len() > 1 {
-            Ok( self.0.remove( index ) )
+            Ok(self.0.remove(index))
         } else {
-            Err( Size0Error )
+            Err(Size0Error)
         }
     }
 
@@ -332,18 +334,19 @@ impl<T> Vec1<T> {
     }
 
     pub fn dedup_by_key<F, K>(&mut self, key: F)
-        where F: FnMut(&mut T) -> K,
-              K: PartialEq<K>
+    where
+        F: FnMut(&mut T) -> K,
+        K: PartialEq<K>,
     {
-        self.0.dedup_by_key( key )
+        self.0.dedup_by_key(key)
     }
 
     pub fn dedup_by<F>(&mut self, same_bucket: F)
-        where F: FnMut(&mut T, &mut T) -> bool
+    where
+        F: FnMut(&mut T, &mut T) -> bool,
     {
-        self.0.dedup_by( same_bucket )
+        self.0.dedup_by(same_bucket)
     }
-
 
     /// Tries to remove the last element from the `Vec1`.
     ///
@@ -361,7 +364,6 @@ impl<T> Vec1<T> {
     pub fn as_vec(&self) -> &Vec<T> {
         &self.0
     }
-
 }
 
 macro_rules! impl_wrapper {
@@ -393,58 +395,64 @@ impl_wrapper! {
         fn as_slice(&self) -> &[T]
 }
 
-
-impl<T> Vec1<T> where T: Clone {
+impl<T> Vec1<T>
+where
+    T: Clone,
+{
     pub fn try_resize(&mut self, new_len: usize, value: T) -> Vec1Result<()> {
         if new_len >= 1 {
-            Ok( self.0.resize( new_len, value ) )
+            Ok(self.0.resize(new_len, value))
         } else {
-            Err( Size0Error )
+            Err(Size0Error)
         }
     }
 
     pub fn extend_from_slice(&mut self, other: &[T]) {
-        self.0.extend_from_slice( other )
+        self.0.extend_from_slice(other)
     }
 }
 
-impl<T> Vec1<T> where T: PartialEq<T> {
+impl<T> Vec1<T>
+where
+    T: PartialEq<T>,
+{
     pub fn dedub(&mut self) {
         self.0.dedup()
     }
 }
 
-
-impl<T> Vec1<T> where T: PartialEq<T> {
+impl<T> Vec1<T>
+where
+    T: PartialEq<T>,
+{
     pub fn dedup(&mut self) {
         self.0.dedup()
     }
 }
 
-
 impl<T> Deref for Vec1<T> {
     type Target = [T];
 
-    fn deref( &self ) -> &Self::Target {
+    fn deref(&self) -> &Self::Target {
         &self.0
     }
 }
 
 impl<T> DerefMut for Vec1<T> {
-    fn deref_mut( &mut self ) -> &mut Self::Target {
+    fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.0
     }
 }
 
 impl<T> Into<Vec<T>> for Vec1<T> {
-
-    fn into( self ) -> Vec<T> {
+    fn into(self) -> Vec<T> {
         self.0
     }
 }
 
 impl<A, B> PartialEq<Vec1<B>> for Vec1<A>
-    where A: PartialEq<B>
+where
+    A: PartialEq<B>,
 {
     fn eq(&self, other: &Vec1<B>) -> bool {
         self.0.eq(&other.0)
@@ -452,17 +460,18 @@ impl<A, B> PartialEq<Vec1<B>> for Vec1<A>
 }
 
 impl<A, B> PartialEq<B> for Vec1<A>
-    where Vec<A>: PartialEq<B>
+where
+    Vec<A>: PartialEq<B>,
 {
     fn eq(&self, other: &B) -> bool {
         self.0.eq(other)
     }
 }
 
-
 impl<T, O, R> Index<R> for Vec1<T>
-    where Vec<T>: Index<R, Output=O>,
-          O: ?Sized
+where
+    Vec<T>: Index<R, Output = O>,
+    O: ?Sized,
 {
     type Output = O;
 
@@ -472,8 +481,9 @@ impl<T, O, R> Index<R> for Vec1<T>
 }
 
 impl<T, O, R> IndexMut<R> for Vec1<T>
-    where Vec<T>: IndexMut<R, Output=O>,
-          O: ?Sized
+where
+    Vec<T>: IndexMut<R, Output = O>,
+    O: ?Sized,
 {
     fn index_mut(&mut self, index: R) -> &mut Self::Output {
         self.0.index_mut(index)
@@ -499,10 +509,12 @@ impl<T> Borrow<Vec<T>> for Vec1<T> {
 }
 
 impl<'a, T> Extend<&'a T> for Vec1<T>
-    where T: 'a + Copy
+where
+    T: 'a + Copy,
 {
     fn extend<I>(&mut self, iter: I)
-        where I: IntoIterator<Item = &'a T>
+    where
+        I: IntoIterator<Item = &'a T>,
     {
         self.0.extend(iter)
     }
@@ -510,7 +522,8 @@ impl<'a, T> Extend<&'a T> for Vec1<T>
 
 impl<T> Extend<T> for Vec1<T> {
     fn extend<I>(&mut self, iter: I)
-        where I: IntoIterator<Item = T>
+    where
+        I: IntoIterator<Item = T>,
     {
         self.0.extend(iter)
     }
@@ -562,8 +575,8 @@ impl<'a, T> IntoIterator for &'a mut Vec1<T> {
 
 #[cfg(feature = "serde")]
 impl<'de, T> ::serde::Deserialize<'de> for Vec1<T>
-    where
-        T: ::serde::Deserialize<'de>
+where
+    T: ::serde::Deserialize<'de>,
 {
     fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
     where
@@ -584,33 +597,33 @@ mod test {
 
     #[macro_export]
     macro_rules! assert_ok {
-        ($val:expr) => ({
+        ($val:expr) => {{
             match $val {
-                Ok( res ) => res,
-                Err( err ) => panic!( "expected Ok(..) got Err({:?})", err)
+                Ok(res) => res,
+                Err(err) => panic!("expected Ok(..) got Err({:?})", err),
             }
-        });
-        ($val:expr, $ctx:expr) => ({
+        }};
+        ($val:expr, $ctx:expr) => {{
             match $val {
-                Ok( res ) => res,
-                Err( err ) => panic!( "expected Ok(..) got Err({:?}) [ctx: {:?}]", err, $ctx)
+                Ok(res) => res,
+                Err(err) => panic!("expected Ok(..) got Err({:?}) [ctx: {:?}]", err, $ctx),
             }
-        });
+        }};
     }
 
     macro_rules! assert_err {
-        ($val:expr) => ({
+        ($val:expr) => {{
             match $val {
-                Ok( val ) => panic!( "expected Err(..) got Ok({:?})", val),
-                Err( err ) => err,
+                Ok(val) => panic!("expected Err(..) got Ok({:?})", val),
+                Err(err) => err,
             }
-        });
-        ($val:expr, $ctx:expr) => ({
+        }};
+        ($val:expr, $ctx:expr) => {{
             match $val {
-                Ok( val ) => panic!( "expected Err(..) got Ok({:?}) [ctx: {:?}]", val, $ctx),
-                Err( err ) => err,
+                Ok(val) => panic!("expected Err(..) got Ok({:?}) [ctx: {:?}]", val, $ctx),
+                Err(err) => err,
             }
-        });
+        }};
     }
 
     mod Size0Error {
@@ -619,7 +632,7 @@ mod test {
 
         #[test]
         fn implements_std_error() {
-            fn comp_check<T: StdError>(){}
+            fn comp_check<T: StdError>() {}
             comp_check::<Size0Error>();
         }
     }
@@ -634,7 +647,6 @@ mod test {
 
             let _ = vec1![1u8,];
             let _ = vec1![1u8];
-
         }
 
         #[test]
@@ -672,27 +684,27 @@ mod test {
             vec.insert(1, 31u8);
             vec.insert(1, 2u8);
             assert_eq!(&*vec, &[1, 2, 31]);
-            vec.dedup_by_key(|k| *k/3);
+            vec.dedup_by_key(|k| *k / 3);
             assert_eq!(&*vec, &[1, 31]);
             vec.push(31);
             assert_eq!(&*vec, &[1, 31, 31]);
-            vec.dedup_by(|l,r| l == r);
+            vec.dedup_by(|l, r| l == r);
             assert_eq!(&*vec, &[1, 31]);
-            vec.extend_from_slice(&[31,2,3]);
+            vec.extend_from_slice(&[31, 2, 3]);
             assert_eq!(&*vec, &[1, 31, 31, 2, 3]);
             vec.dedub();
             assert_eq!(&*vec, &[1, 31, 2, 3]);
             // as the passed in vec is emptied this won't work with a vec1 as parameter
-            vec.append(&mut vec![1,2,3]);
+            vec.append(&mut vec![1, 2, 3]);
             assert_eq!(&*vec, &[1, 31, 2, 3, 1, 2, 3])
         }
 
         #[test]
         fn provides_other_methos_in_failible_form() {
-            let mut vec = vec1![1u8,2,3,4];
+            let mut vec = vec1![1u8, 2, 3, 4];
             assert_ok!(vec.try_truncate(3));
             assert_err!(vec.try_truncate(0));
-            assert_eq!(vec, &[1,2,3]);
+            assert_eq!(vec, &[1, 2, 3]);
 
             assert_ok!(vec.try_swap_remove(0));
             assert_eq!(vec, &[3, 2]);
@@ -705,30 +717,28 @@ mod test {
             assert_eq!(vec.try_pop(), Ok(12));
             assert_eq!(vec.try_pop(), Err(Size0Error));
             assert_eq!(vec, &[2]);
-
         }
 
         #[test]
         fn try_split_of() {
-            let mut vec = vec1![1,2,3,4];
+            let mut vec = vec1![1, 2, 3, 4];
             assert_err!(vec.try_split_off(0));
             let len = vec.len();
             assert_err!(vec.try_split_off(len));
-            let nvec = assert_ok!(vec.try_split_off(len-1));
-            assert_eq!(vec, &[1,2,3]);
+            let nvec = assert_ok!(vec.try_split_off(len - 1));
+            assert_eq!(vec, &[1, 2, 3]);
             assert_eq!(nvec, &[4]);
         }
 
         #[test]
         fn try_resize() {
             let mut vec = Vec1::new(1u8);
-            assert_ok!(vec.try_resize(10,2u8));
+            assert_ok!(vec.try_resize(10, 2u8));
             assert_eq!(vec.len(), 10);
             assert_ok!(vec.try_resize(1, 2u8));
             assert_eq!(vec, &[1]);
             assert_err!(vec.try_resize(0, 2u8));
         }
-
 
         #[test]
         fn with_capacity() {
@@ -738,89 +748,92 @@ mod test {
 
         #[test]
         fn impl_index() {
-            let vec = vec1![ 1,2,3,3];
-            assert_eq!(&vec[..2], &[1,2]);
+            let vec = vec1![1, 2, 3, 3];
+            assert_eq!(&vec[..2], &[1, 2]);
         }
         #[test]
         fn impl_index_mut() {
-            let mut vec = vec1![ 1,2,3,3];
-            assert_eq!(&mut vec[..2], &mut [1,2]);
+            let mut vec = vec1![1, 2, 3, 3];
+            assert_eq!(&mut vec[..2], &mut [1, 2]);
         }
 
         #[test]
         fn impl_extend() {
             let mut vec = Vec1::new(1u8);
-            vec.extend([2,3].iter().cloned());
+            vec.extend([2, 3].iter().cloned());
             assert_eq!(vec, &[1, 2, 3]);
         }
 
         #[test]
         fn impl_extend_ref_copy() {
             let mut vec = Vec1::new(1u8);
-            vec.extend([2,3].iter());
+            vec.extend([2, 3].iter());
             assert_eq!(vec, &[1, 2, 3]);
         }
 
         #[test]
         fn impl_borrow_mut_slice() {
-            fn chk<E, T: BorrowMut<[E]>>(){};
+            fn chk<E, T: BorrowMut<[E]>>() {};
             chk::<u8, Vec1<u8>>();
         }
 
         #[test]
         fn impl_borrow_slice() {
-            fn chk<E, T: BorrowMut<[E]>>(){};
+            fn chk<E, T: BorrowMut<[E]>>() {};
             chk::<u8, Vec1<u8>>();
         }
 
         #[test]
         fn impl_as_mut_slice() {
-            fn chk<E, T: AsMut<[E]>>(){};
+            fn chk<E, T: AsMut<[E]>>() {};
             chk::<u8, Vec1<u8>>();
         }
 
         #[test]
         fn impl_as_ref() {
-            fn chk<E, T: AsRef<[E]>>(){};
+            fn chk<E, T: AsRef<[E]>>() {};
             chk::<u8, Vec1<u8>>();
         }
         #[test]
         fn impl_as_mut_slice_self() {
-            fn chk<E, T: AsMut<Vec1<E>>>(){};
+            fn chk<E, T: AsMut<Vec1<E>>>() {};
             chk::<u8, Vec1<u8>>();
         }
 
         #[test]
         fn impl_as_ref_self() {
-            fn chk<E, T: AsRef<Vec1<E>>>(){};
+            fn chk<E, T: AsRef<Vec1<E>>>() {};
             chk::<u8, Vec1<u8>>();
         }
 
         #[test]
         fn impl_as_ref_vec() {
-            fn chk<E, T: AsRef<Vec<E>>>(){};
+            fn chk<E, T: AsRef<Vec<E>>>() {};
             chk::<u8, Vec1<u8>>();
         }
 
         //into iter self, &, &mut
         #[test]
         fn impl_into_iter() {
-            let vec = vec1![ 1, 2, 3];
+            let vec = vec1![1, 2, 3];
             assert_eq!(6, vec.into_iter().sum::<u8>());
         }
         #[test]
         fn impl_into_iter_on_ref() {
-            let vec = vec1![ 1, 2, 3];
+            let vec = vec1![1, 2, 3];
             assert_eq!(6, (&vec).into_iter().sum::<u8>());
         }
         #[test]
         fn impl_into_iter_on_ref_mut() {
-            let mut vec = vec1![ 1, 2, 3];
-            assert_eq!(3, (&mut vec).into_iter().fold(0u8, |x, m| {
-                *m = *m + 1;
-                x + 1
-            }));
-            assert_eq!(vec, &[2,3,4]);
+            let mut vec = vec1![1, 2, 3];
+            assert_eq!(
+                3,
+                (&mut vec).into_iter().fold(0u8, |x, m| {
+                    *m = *m + 1;
+                    x + 1
+                })
+            );
+            assert_eq!(vec, &[2, 3, 4]);
         }
 
         #[test]
@@ -856,8 +869,6 @@ mod test {
             }
         }
 
-
     }
-
 
 }
