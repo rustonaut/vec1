@@ -124,15 +124,61 @@ impl<T> IntoIterator for Vec1<T> {
 }
 
 impl<T> Vec1<T> {
+
+    /// Creates a new `Vec1` instance containing a single element.
+    ///
+    /// This is roughly `Vec1(vec![first])`
     pub fn new(first: T) -> Self {
         Vec1(vec![first])
     }
 
-    pub fn from_vec(vec: Vec<T>) -> Vec1Result<Self> {
-        if vec.len() > 0 {
-            Ok(Vec1(vec))
+
+    #[deprecated(since="1.2.0", note="does not work with `?` use Vec1::try_from_vec() instead")]
+    pub fn from_vec(vec: Vec<T>) -> StdResult<Self, Vec<T>> {
+        if vec.is_empty() {
+            Err(vec)
         } else {
+            Ok(Vec1(vec))
+        }
+    }
+
+    /// Tries to create a `Vec1<T>` from a normal `Vec<T>`.
+    ///
+    /// # Errors
+    ///
+    /// This will fail if the input `Vec<T>` is empty.
+    /// The returned error is a `Size0Error` instance, as
+    /// such this means the _input vector will be dropped if
+    /// it's empty_. But this is normally fine as it only
+    /// happens if the `Vec<T>` is empty.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use vec1::Vec1;
+    /// let vec1 = Vec1::try_from_vec(vec![1u8, 2, 3])
+    ///     .unwrap();
+    /// assert_eq!(vec1, vec![1u8, 2, 3]);
+    /// ```
+    ///
+    /// If you need to return a `Option<Vec1<T>>` you
+    /// can use `.ok()` on the returned result:
+    ///
+    /// ```
+    /// # use vec1::Vec1;
+    /// fn foobar(input: Vec<u8>) -> Option<Vec1<u8>> {
+    ///     let mut res = Vec1::try_from_vec(input).ok()?;
+    ///     for x in res.iter_mut() {
+    ///         *x *= 2;
+    ///     }
+    ///     Some(res)
+    /// }
+    /// ```
+    pub fn try_from_vec(vec: Vec<T>) -> Vec1Result<Self> {
+        if vec.is_empty() {
             Err(Size0Error)
+        } else {
+            Ok(Vec1(vec))
         }
     }
 
@@ -165,7 +211,7 @@ impl<T> Vec1<T> {
     /// assert_eq!(data, vec![2,4,6]);
     ///
     /// // without mapped
-    /// let data = Vec1::from_vec(data.into_iter().map(|x|x*2).collect::<Vec<_>>()).unwrap();
+    /// let data = Vec1::try_from_vec(data.into_iter().map(|x|x*2).collect::<Vec<_>>()).unwrap();
     /// assert_eq!(data, vec![4,8,12]);
     /// # }
     /// ```
@@ -585,8 +631,8 @@ where
         use serde::de::Error;
 
         let v = Vec::deserialize(deserializer)?;
-        let v1 = Vec1::from_vec(v)
-            .map_err(|_| D::Error::custom("Could not deserialize Vec1 with no elements"))?;
+        let v1 = Vec1::try_from_vec(v)
+            .map_err(|e| D::Error::custom(e))?;
 
         Ok(v1)
     }
