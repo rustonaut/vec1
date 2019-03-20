@@ -1,4 +1,5 @@
 [package]
+version = "1.2.0"
 authors = ["Philipp Korber <p.korber@1aim.com>"]
 categories = ["data-structures"]
 description = "a std Vec wrapper assuring that it has at least 1 element"
@@ -8,7 +9,6 @@ license = "MIT OR Apache-2.0"
 name = "vec1"
 readme = "./README.md"
 repository = "https://github.com/1aim/vec1/"
-version = "1.1.0"
 
 [features]
 unstable-nightly-try-from-impl = []
