@@ -49,6 +49,16 @@ use std::{
     ops::{Deref, DerefMut, Index, IndexMut, RangeBounds, Bound},
     result::Result as StdResult,
     slice, vec,
+    collections::VecDeque,
+    rc::Rc,
+    sync::Arc
+};
+
+#[cfg(feature = "unstable-nightly-try-from-impl")]
+use std::{
+    convert::TryFrom,
+    ffi::CString,
+    collections::BinaryHeap
 };
 
 /// A macro similar to `vec!` to create a `Vec1`.
@@ -760,6 +770,18 @@ where
     }
 }
 
+impl<T> Into<Rc<[T]>> for Vec1<T> {
+    fn into(self) -> Rc<[T]> {
+        self.0.into()
+    }
+}
+
+impl<T> Into<Arc<[T]>> for Vec1<T> {
+    fn into(self) -> Arc<[T]> {
+        self.0.into()
+    }
+}
+
 /// **Warning: This impl is unstable and requires nightly,
 ///   it's not covert by semver stability guarantees.**
 ///
@@ -773,6 +795,61 @@ impl<T> std::convert::TryFrom<Vec<T>> for Vec1<T> {
         Vec1::try_from_vec(vec)
     }
 }
+
+
+macro_rules! wrapper_from_to_try_from {
+    (impl Into + impl[$($tv:tt)*] TryFrom<$tf:ty> for Vec1<$et:ty> $($tail:tt)*) => (
+
+        wrapper_from_to_try_from!(impl[$($tv),*] TryFrom<$tf> for Vec1<$et> $($tail)*);
+
+        impl<$($tv)*> Into<$tf> for Vec1<$et> $($tail)* {
+            fn into(self) -> $tf {
+                self.0.into()
+            }
+        }
+    );
+    (impl[$($tv:tt)*] TryFrom<$tf:ty> for Vec1<$et:ty> $($tail:tt)*) => (
+        /// **Warning: This impl is unstable and requires nightly,
+        ///   it's not covert by semver stability guarantees.**
+        #[cfg(feature = "unstable-nightly-try-from-impl")]
+        impl<$($tv)*> TryFrom<$tf> for Vec1<$et> $($tail)* {
+            type Error = Size0Error;
+
+            fn try_from(inp: $tf) -> StdResult<Self, Self::Error> {
+                if inp.is_empty() {
+                    Err(Size0Error)
+                } else {
+                    Ok(Vec1(inp.into()))
+                }
+            }
+        }
+    );
+}
+
+wrapper_from_to_try_from!(impl Into + impl[T] TryFrom<Box<[T]>> for Vec1<T>);
+wrapper_from_to_try_from!(impl[T] TryFrom<BinaryHeap<T>> for Vec1<T>);
+wrapper_from_to_try_from!(impl[] TryFrom<String> for Vec1<u8>);
+wrapper_from_to_try_from!(impl['a] TryFrom<&'a str> for Vec1<u8>);
+wrapper_from_to_try_from!(impl['a, T] TryFrom<&'a [T]> for Vec1<T> where T: Clone);
+wrapper_from_to_try_from!(impl['a, T] TryFrom<&'a mut [T]> for Vec1<T> where T: Clone);
+wrapper_from_to_try_from!(impl Into + impl[T] TryFrom<VecDeque<T>> for Vec1<T>);
+
+/// **Warning: This impl is unstable and requires nightly,
+///   it's not covert by semver stability guarantees.**
+#[cfg(feature = "unstable-nightly-try-from-impl")]
+impl TryFrom<CString> for Vec1<u8> {
+    type Error = Size0Error;
+
+    /// Like `Vec`'s `From<CString>` this will treat the `'\0'` as not part of the string.
+    fn try_from(string: CString) -> StdResult<Self, Self::Error> {
+        if string.as_bytes().is_empty() {
+            Err(Size0Error)
+        } else {
+            Ok(Vec1(string.into()))
+        }
+    }
+}
+
 
 #[cfg(test)]
 mod test {
@@ -1114,6 +1191,16 @@ mod test {
 
             let vec = Vec1::try_from(vec![1u8, 12]).unwrap();
             assert_eq!(vec, vec![1u8, 12]);
+        }
+
+        #[cfg(feature = "unstable-nightly-try-from-impl")]
+        #[test]
+        fn has_a_try_from_boxed_slice() {
+            use std::convert::TryFrom;
+            let bs: Box<[u8]> = vec![1,2,3].into();
+            let vec = Vec1::<u8>::try_from(bs)
+                .unwrap();
+            assert_eq!(vec, vec![1u8, 2, 3]);
         }
 
     }
