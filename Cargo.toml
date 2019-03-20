@@ -11,6 +11,11 @@ readme = "./README.md"
 repository = "https://github.com/1aim/vec1/"
 
 [features]
+# This feature is unstable due to TryFrom being unstable, once
+# TryFrom is stable the impl will be available without feature.
+# Still even then we will keep the feature for keeping compatiblility
+# with nightly programms, even through it won't have any effect
+# anymore once TryFrom is stable and integrated.
 unstable-nightly-try-from-impl = []
 
 [dependencies]
