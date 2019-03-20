@@ -41,12 +41,15 @@ extern crate serde;
 #[cfg(all(feature = "serde", test))]
 extern crate serde_json;
 
-use std::borrow::{Borrow, BorrowMut};
-use std::error::Error as StdError;
-use std::iter::{Extend, IntoIterator};
-use std::ops::{Deref, DerefMut, Index, IndexMut};
-use std::result::Result as StdResult;
-use std::{fmt, slice, vec};
+use std::{
+    borrow::{Borrow, BorrowMut},
+    error::Error as StdError,
+    fmt::{self, Debug},
+    iter::{Extend, IntoIterator, Peekable, ExactSizeIterator, DoubleEndedIterator},
+    ops::{Deref, DerefMut, Index, IndexMut, RangeBounds, Bound},
+    result::Result as StdResult,
+    slice, vec,
+};
 
 /// A macro similar to `vec!` to create a `Vec1`.
 ///
@@ -124,7 +127,6 @@ impl<T> IntoIterator for Vec1<T> {
 }
 
 impl<T> Vec1<T> {
-
     /// Creates a new `Vec1` instance containing a single element.
     ///
     /// This is roughly `Vec1(vec![first])`.
@@ -144,7 +146,10 @@ impl<T> Vec1<T> {
     /// # Errors
     ///
     /// If the input is empty the input is returned _as error_.
-    #[deprecated(since="1.2.0", note="does not work with `?` use Vec1::try_from_vec() instead")]
+    #[deprecated(
+        since = "1.2.0",
+        note = "does not work with `?` use Vec1::try_from_vec() instead"
+    )]
     pub fn from_vec(vec: Vec<T>) -> StdResult<Self, Vec<T>> {
         if vec.is_empty() {
             Err(vec)
@@ -422,7 +427,101 @@ impl<T> Vec1<T> {
     pub fn as_vec(&self) -> &Vec<T> {
         &self.0
     }
+
+    pub fn splice<R, I>(
+        &mut self,
+        range: R,
+        replace_with: I,
+    ) -> Vec1Result<Splice<<I as IntoIterator>::IntoIter>>
+    where
+        I: IntoIterator<Item = T>,
+        R: RangeBounds<usize>,
+    {
+        let mut replace_with = replace_with.into_iter().peekable();
+        let range_covers_all = range_covers_vec1(&range, self.len());
+
+        if range_covers_all && replace_with.peek().is_none() {
+            Err(Size0Error)
+        } else {
+            let vec_splice = self.0.splice(range, replace_with);
+            Ok(Splice { vec_splice })
+        }
+    }
+
 }
+
+fn range_covers_vec1(range: &impl RangeBounds<usize>, vec1_len: usize) -> bool {
+    // As this is only used for vec1 we don't need the if vec_len == 0.
+    // if vec_len == 0 { return true; }
+    range_covers_vec_start(range)
+    && range_covers_vec_end(range, vec1_len)
+}
+
+fn range_covers_vec_start(range: &impl RangeBounds<usize>) -> bool {
+    match range.start_bound() {
+        Bound::Included(idx) => *idx == 0,
+        // there is no idx before 0, so if you start from a excluded index
+        // you can not cover 0
+        Bound::Excluded(_idx) => false,
+        Bound::Unbounded => true
+    }
+}
+
+fn range_covers_vec_end(range: &impl RangeBounds<usize>, len: usize) -> bool {
+    match range.end_bound() {
+        Bound::Included(idx) => {
+            // covers all if it goes up to the last idx which is len-1
+            *idx >= len-1
+        },
+        Bound::Excluded(idx) => {
+            // len = max_idx + 1, so if excl_end = len it's > max_idx, so >= is correct
+            *idx >= len
+        },
+        Bound::Unbounded => true
+    }
+}
+
+pub struct Splice<'a, I: Iterator + 'a> {
+    vec_splice: vec::Splice<'a, Peekable<I>>
+}
+
+impl<'a, I> Debug for Splice<'a, I>
+    where I: Iterator + 'a, vec::Splice<'a, Peekable<I>>: Debug
+{
+    fn fmt(&self, fter: &mut fmt::Formatter) -> fmt::Result {
+        fter.debug_tuple("Splice")
+            .field(&self.vec_splice)
+            .finish()
+    }
+}
+
+impl<'a, I> Iterator for Splice<'a, I>
+    where I: Iterator
+{
+    type Item = I::Item;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        self.vec_splice.next()
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.vec_splice.size_hint()
+    }
+}
+
+impl<'a, I> ExactSizeIterator for Splice<'a, I>
+    where I: Iterator
+{}
+
+impl<'a, I> DoubleEndedIterator for Splice<'a, I>
+    where I: Iterator
+{
+    fn next_back(&mut self) -> Option<Self::Item> {
+        self.vec_splice.next_back()
+    }
+}
+
+
 
 macro_rules! impl_wrapper {
     (pub $T:ident>
@@ -643,8 +742,7 @@ where
         use serde::de::Error;
 
         let v = Vec::deserialize(deserializer)?;
-        let v1 = Vec1::try_from_vec(v)
-            .map_err(|e| D::Error::custom(e))?;
+        let v1 = Vec1::try_from_vec(v).map_err(|e| D::Error::custom(e))?;
 
         Ok(v1)
     }
@@ -707,6 +805,26 @@ mod test {
             fn comp_check<T: StdError>() {}
             comp_check::<Size0Error>();
         }
+    }
+
+    #[test]
+    fn range_covers_vec() {
+        use super::range_covers_vec1;
+
+        let len = 3;
+        // common slicesa
+        assert!(range_covers_vec1(&(..), len));
+        assert!(range_covers_vec1(&(..3), len));
+        assert!(!range_covers_vec1(&(..2), len));
+        assert!(!range_covers_vec1(&(1..3), len));
+        assert!(range_covers_vec1(&(0..3), len));
+        assert!(range_covers_vec1(&(0..), len));
+        assert!(!range_covers_vec1(&(1..), len));
+        assert!(!range_covers_vec1(&(len..), len));
+
+        // unusual slices
+        assert!(!range_covers_vec1(&(..0), len));
+        assert!(!range_covers_vec1(&(2..1), len));
     }
 
     mod Vec1 {
@@ -914,6 +1032,39 @@ mod test {
             assert_eq!(&mut vec[0], &mut "a");
         }
 
+        #[test]
+        fn splice_with_full_range_and_no_replace_values_fails() {
+            let mut vec = Vec1::try_from_vec(vec![1, 2, 3, 4, 5])
+                .unwrap();
+            let res = vec.splice(.., vec![]);
+            assert!(res.is_err());
+        }
+
+        #[test]
+        fn splice_with_full_range_but_non_empty_iter_works() {
+            let mut vec = Vec1::try_from_vec(vec![1, 2, 3, 4, 5])
+                .unwrap();
+            let res: Vec<_> = vec
+                .splice(.., vec![11])
+                .unwrap()
+                .collect();
+            assert_eq!(res, vec![1, 2, 3, 4, 5]);
+            assert_eq!(vec, vec![11]);
+        }
+
+        #[test]
+        fn splice_with_non_full_range_but_empty_iter_works() {
+            let mut vec = Vec1::try_from_vec(vec![1, 2, 3, 4, 5])
+                .unwrap();
+            let res: Vec<_> = vec
+                .splice(1.., vec![])
+                .unwrap()
+                .collect();
+
+            assert_eq!(res, vec![2, 3, 4, 5]);
+            assert_eq!(vec, vec![1]);
+        }
+
         #[cfg(feature = "serde")]
         mod serde {
             use super::super::super::*;
@@ -949,8 +1100,7 @@ mod test {
             let vec = Vec1::<u8>::try_from(vec![]);
             assert_eq!(vec, Err(Size0Error));
 
-            let vec = Vec1::try_from(vec![1u8,12])
-                .unwrap();
+            let vec = Vec1::try_from(vec![1u8, 12]).unwrap();
             assert_eq!(vec, vec![1u8, 12]);
         }
 
