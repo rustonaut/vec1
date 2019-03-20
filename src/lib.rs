@@ -82,7 +82,7 @@ impl fmt::Display for Size0Error {
 }
 impl StdError for Size0Error {
     fn description(&self) -> &str {
-        "Can not produce a Vec1 with a length of zero."
+        "Cannot produce a Vec1 with a length of zero."
     }
 }
 
@@ -127,12 +127,23 @@ impl<T> Vec1<T> {
 
     /// Creates a new `Vec1` instance containing a single element.
     ///
-    /// This is roughly `Vec1(vec![first])`
+    /// This is roughly `Vec1(vec![first])`.
     pub fn new(first: T) -> Self {
         Vec1(vec![first])
     }
 
-
+    /// Tries to create a `Vec1<T>` from a `Vec<T>`.
+    ///
+    /// The fact that the input is returned _as error_ if it's empty,
+    /// means that it doesn't work well with the `?` operator. It naming
+    /// is also semantic sub-optimal as it's not a "from" but "try from"
+    /// conversion. Which is why this method is now deprecated. Instead
+    /// use `try_from_vec` and once `TryFrom` is stable it will be possible
+    /// to use `try_from`, too.
+    ///
+    /// # Errors
+    ///
+    /// If the input is empty the input is returned _as error_.
     #[deprecated(since="1.2.0", note="does not work with `?` use Vec1::try_from_vec() instead")]
     pub fn from_vec(vec: Vec<T>) -> StdResult<Self, Vec<T>> {
         if vec.is_empty() {
@@ -182,6 +193,7 @@ impl<T> Vec1<T> {
         }
     }
 
+    /// Creates a new `Vec1` with a given capacity and a given "first" element.
     pub fn with_capacity(first: T, capacity: usize) -> Self {
         let mut vec = Vec::with_capacity(capacity);
         vec.push(first);
