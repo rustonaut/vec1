@@ -650,6 +650,20 @@ where
     }
 }
 
+/// **Warning: This impl is unstable and requires nightly,
+///   it's not covert by semver stability guarantees.**
+///
+/// (Through as long as the `TryFrom` trait does not change this
+///  crate does not intend to change this implementation.)
+#[cfg(feature = "unstable-nightly-try-from-impl")]
+impl<T> std::convert::TryFrom<Vec<T>> for Vec1<T> {
+    type Error = Size0Error;
+
+    fn try_from(vec: Vec<T>) -> StdResult<Self, Self::Error> {
+        Vec1::try_from_vec(vec)
+    }
+}
+
 #[cfg(test)]
 mod test {
 
@@ -925,6 +939,19 @@ mod test {
                 let json = serde_json::to_string(&vec).unwrap();
                 assert_eq!(json, "[1,2,3]");
             }
+        }
+
+        #[cfg(feature = "unstable-nightly-try-from-impl")]
+        #[test]
+        fn has_a_try_from_impl() {
+            use std::convert::TryFrom;
+
+            let vec = Vec1::<u8>::try_from(vec![]);
+            assert_eq!(vec, Err(Size0Error));
+
+            let vec = Vec1::try_from(vec![1u8,12])
+                .unwrap();
+            assert_eq!(vec, vec![1u8, 12]);
         }
 
     }
