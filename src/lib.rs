@@ -447,7 +447,19 @@ impl<T> Vec1<T> {
             Ok(Splice { vec_splice })
         }
     }
+}
 
+impl Vec1<u8> {
+
+    /// Works like `&[u8].to_ascii_uppercase()` but returns a `Vec1<T>` instead of a `Vec<T>`
+    pub fn to_ascii_uppercase(&self) -> Vec1<u8> {
+        Vec1(self.0.to_ascii_uppercase())
+    }
+
+    /// Works like `&[u8].to_ascii_lowercase()` but returns a `Vec1<T>` instead of a `Vec<T>`
+    pub fn to_ascii_lowercase(&self) -> Vec1<u8> {
+        Vec1(self.0.to_ascii_lowercase())
+    }
 }
 
 fn range_covers_vec1(range: &impl RangeBounds<usize>, vec1_len: usize) -> bool {
