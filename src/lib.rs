@@ -609,6 +609,15 @@ where
     }
 }
 
+impl<T> Default for Vec1<T>
+where
+    T: Default,
+{
+    fn default() -> Self {
+        Vec1::new(Default::default())
+    }
+}
+
 impl<T> Deref for Vec1<T> {
     type Target = [T];
 
@@ -1152,6 +1161,18 @@ mod test {
 
             assert_eq!(res, vec![2, 3, 4, 5]);
             assert_eq!(vec, vec![1]);
+        }
+
+        #[test]
+        fn deriving_default_works() {
+            #[derive(Default)]
+            struct Example {
+                field: Vec1<u8>
+            }
+
+            let example = Example::default();
+
+            assert_eq!(example.field, vec1![0]);
         }
 
         #[cfg(feature = "serde")]
