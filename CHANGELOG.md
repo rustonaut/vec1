@@ -1,6 +1,11 @@
 
 # Change Log
 
+## Version 1.4.0 (26.03.2019)
+
+New trait impl:
+- impl Default for Vec1<T> where T: Default
+
 ## Version 1.3.0 (21.03.2019)
 
 New manual proxied methods:
