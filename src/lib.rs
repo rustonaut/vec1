@@ -43,7 +43,10 @@ extern crate serde_json;
 
 use std::{
     borrow::{Borrow, BorrowMut},
+    collections::BinaryHeap,
+    convert::TryFrom,
     error::Error as StdError,
+    ffi::CString,
     fmt::{self, Debug},
     iter::{Extend, IntoIterator, Peekable, ExactSizeIterator, DoubleEndedIterator},
     ops::{Deref, DerefMut, Index, IndexMut, RangeBounds, Bound},
@@ -52,13 +55,6 @@ use std::{
     collections::VecDeque,
     rc::Rc,
     sync::Arc
-};
-
-#[cfg(feature = "unstable-nightly-try-from-impl")]
-use std::{
-    convert::TryFrom,
-    ffi::CString,
-    collections::BinaryHeap
 };
 
 /// A macro similar to `vec!` to create a `Vec1`.
@@ -791,12 +787,6 @@ impl<T> Into<Arc<[T]>> for Vec1<T> {
     }
 }
 
-/// **Warning: This impl is unstable and requires nightly,
-///   it's not covert by semver stability guarantees.**
-///
-/// (Through as long as the `TryFrom` trait does not change this
-///  crate does not intend to change this implementation.)
-#[cfg(feature = "unstable-nightly-try-from-impl")]
 impl<T> std::convert::TryFrom<Vec<T>> for Vec1<T> {
     type Error = Size0Error;
 
@@ -818,9 +808,6 @@ macro_rules! wrapper_from_to_try_from {
         }
     );
     (impl[$($tv:tt)*] TryFrom<$tf:ty> for Vec1<$et:ty> $($tail:tt)*) => (
-        /// **Warning: This impl is unstable and requires nightly,
-        ///   it's not covert by semver stability guarantees.**
-        #[cfg(feature = "unstable-nightly-try-from-impl")]
         impl<$($tv)*> TryFrom<$tf> for Vec1<$et> $($tail)* {
             type Error = Size0Error;
 
@@ -845,7 +832,6 @@ wrapper_from_to_try_from!(impl Into + impl[T] TryFrom<VecDeque<T>> for Vec1<T>);
 
 /// **Warning: This impl is unstable and requires nightly,
 ///   it's not covert by semver stability guarantees.**
-#[cfg(feature = "unstable-nightly-try-from-impl")]
 impl TryFrom<CString> for Vec1<u8> {
     type Error = Size0Error;
 
@@ -1202,7 +1188,6 @@ mod test {
             }
         }
 
-        #[cfg(feature = "unstable-nightly-try-from-impl")]
         #[test]
         fn has_a_try_from_impl() {
             use std::convert::TryFrom;
@@ -1214,7 +1199,6 @@ mod test {
             assert_eq!(vec, vec![1u8, 12]);
         }
 
-        #[cfg(feature = "unstable-nightly-try-from-impl")]
         #[test]
         fn has_a_try_from_boxed_slice() {
             use std::convert::TryFrom;
@@ -1223,7 +1207,6 @@ mod test {
                 .unwrap();
             assert_eq!(vec, vec![1u8, 2, 3]);
         }
-
     }
 
 }
