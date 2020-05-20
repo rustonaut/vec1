@@ -67,13 +67,11 @@ macro_rules! vec1 {
     () => (
         compile_error!("Vec1 needs at least 1 element")
     );
-    ($first:expr) => (
-         $crate::Vec1::new($first)
+    ($first:expr $(, $item:expr)* , ) => (
+        $crate::vec1!($first $(, $item)*)
     );
-    ($first:expr,) => (
-         $crate::Vec1::new($first)
-    );
-    ($first:expr, $($item:expr),*) => ({
+    ($first:expr $(, $item:expr)* ) => ({
+        #[allow(unused_mut)]
         let mut tmp = $crate::Vec1::new($first);
         $(tmp.push($item);)*
         tmp
@@ -915,13 +913,6 @@ mod test {
         #![allow(non_snake_case)]
         use super::super::*;
 
-        #[test]
-        fn now_warning_on_empty_vec() {
-            #![deny(warnings)]
-
-            let _ = vec1![1u8,];
-            let _ = vec1![1u8];
-        }
 
         #[test]
         fn deref_slice() {
