@@ -268,6 +268,17 @@ impl<T> Vec1<T> {
     /// This is useful as it keeps the knowledge that the length is >= 1,
     /// even through the old `Vec1` is consumed and turned into an iterator.
     ///
+    /// As this method consumes self, returning an error means that this
+    /// vec is dropped. I.e. this method behaves roughly like using a
+    /// chain of `into_iter()`, `map`, `collect::<Result<Vec<N>,E>>` and
+    /// then converting the `Vec` back to a `Vec1`.
+    ///
+    ///
+    /// # Errors
+    ///
+    /// Once any call to `map_fn` returns a error that error is directly
+    /// returned by this method.
+    ///
     /// # Example
     ///
     /// ```
@@ -289,7 +300,7 @@ impl<T> Vec1<T> {
         // ::collect<Result<Vec<_>>>() is uses the iterators size hint's lower bound
         // for with_capacity, which is 0 as it might fail at the first element
         let mut out = Vec::with_capacity(self.len());
-        for element in self.into_iter() {
+        for element in self {
             out.push(map_fn(element)?);
         }
         Ok(Vec1(out))
@@ -300,6 +311,12 @@ impl<T> Vec1<T> {
     ///
     /// The benefit to this compared to `Iterator::map` is that it's known
     /// that the length will still be at least 1 when creating the new `Vec1`.
+    ///
+    /// # Errors
+    ///
+    /// Once any call to `map_fn` returns a error that error is directly
+    /// returned by this method.
+    ///
     pub fn try_mapped_ref<F, N, E>(&self, map_fn: F) -> Result<Vec1<N>, E>
     where
         F: FnMut(&T) -> Result<N, E>,
@@ -317,6 +334,12 @@ impl<T> Vec1<T> {
     ///
     /// The benefit to this compared to `Iterator::map` is that it's known
     /// that the length will still be at least 1 when creating the new `Vec1`.
+    ///
+    /// # Errors
+    ///
+    /// Once any call to `map_fn` returns a error that error is directly
+    /// returned by this method.
+    ///
     pub fn try_mapped_mut<F, N, E>(&mut self, map_fn: F) -> Result<Vec1<N>, E>
     where
         F: FnMut(&mut T) -> Result<N, E>,
@@ -361,6 +384,13 @@ impl<T> Vec1<T> {
         self.0.first_mut().unwrap()
     }
 
+    /// Truncates the vec1 to given length.
+    ///
+    /// # Errors
+    ///
+    /// If len is 0 an error is returned as the
+    /// length >= 1 constraint must be uphold.
+    ///
     pub fn try_truncate(&mut self, len: usize) -> Vec1Result<()> {
         if len > 0 {
             self.0.truncate(len);
@@ -370,6 +400,12 @@ impl<T> Vec1<T> {
         }
     }
 
+    /// Calls `swap_remove` on the inner vec if length >= 2.
+    ///
+    /// # Errors
+    ///
+    /// If len is 1 an error is returned as the
+    /// length >= 1 constraint must be uphold.
     pub fn try_swap_remove(&mut self, index: usize) -> Vec1Result<T> {
         if self.len() > 1 {
             Ok(self.0.swap_remove(index))
@@ -378,6 +414,12 @@ impl<T> Vec1<T> {
         }
     }
 
+    /// Calls `remove` on the inner vec if length >= 2.
+    ///
+    /// # Errors
+    ///
+    /// If len is 1 an error is returned as the
+    /// length >= 1 constraint must be uphold.
     pub fn try_remove(&mut self, index: usize) -> Vec1Result<T> {
         if self.len() > 1 {
             Ok(self.0.remove(index))
@@ -386,10 +428,14 @@ impl<T> Vec1<T> {
         }
     }
 
+    /// Calls `split_of` on the inner vec if both resulting parts have length >= 1.
+    ///
+    /// # Errors
+    ///
+    /// If after the split any part would be empty an error is returned as the
+    /// length >= 1 constraint must be uphold.
     pub fn try_split_off(&mut self, at: usize) -> Vec1Result<Vec1<T>> {
-        if at == 0 {
-            Err(Size0Error)
-        } else if at >= self.len() {
+        if at == 0 || at >= self.len() {
             Err(Size0Error)
         } else {
             let out = self.0.split_off(at);
@@ -397,6 +443,11 @@ impl<T> Vec1<T> {
         }
     }
 
+    /// Calls `dedup_by_key` on the inner vec.
+    ///
+    /// While this can remove elements it will
+    /// never produce a empty vector from an non
+    /// empty vector.
     pub fn dedup_by_key<F, K>(&mut self, key: F)
     where
         F: FnMut(&mut T) -> K,
@@ -405,6 +456,11 @@ impl<T> Vec1<T> {
         self.0.dedup_by_key(key)
     }
 
+    /// Calls `dedup_by_key` on the inner vec.
+    ///
+    /// While this can remove elements it will
+    /// never produce a empty vector from an non
+    /// empty vector.
     pub fn dedup_by<F>(&mut self, same_bucket: F)
     where
         F: FnMut(&mut T, &mut T) -> bool,
@@ -416,6 +472,11 @@ impl<T> Vec1<T> {
     ///
     /// Returns an error if the length is currently 1 (so the `try_pop` would reduce
     /// the length to 0).
+    ///
+    /// # Errors
+    ///
+    /// If len is 1 an error is returned as the
+    /// length >= 1 constraint must be uphold.
     pub fn try_pop(&mut self) -> Vec1Result<T> {
         if self.len() > 1 {
             //UNWRAP_SAFE: pop on len > 1 can not be none
@@ -425,10 +486,20 @@ impl<T> Vec1<T> {
         }
     }
 
+    /// Return a reference to the underlying `Vec`.
     pub fn as_vec(&self) -> &Vec<T> {
         &self.0
     }
 
+    /// Calls `splice` on the underlying vec if it will not produce an empty vec.
+    ///
+    /// # Errors
+    ///
+    /// If range covers the whole vec and the replacement iterator doesn't yield
+    /// any value an error is returned.
+    ///
+    /// This means that if an error is returned `next` might still have been called
+    /// once on the `replace_with` iterator.
     pub fn splice<R, I>(
         &mut self,
         range: R,
@@ -569,9 +640,16 @@ impl<T> Vec1<T>
 where
     T: Clone,
 {
+    /// Calls `resize` on the underlying `Vec` if `new_len` >= 1.
+    ///
+    /// # Errors
+    ///
+    /// If the `new_len` is 0 an error is returned as
+    /// the length >= 1 constraint must be uphold.
     pub fn try_resize(&mut self, new_len: usize, value: T) -> Vec1Result<()> {
         if new_len >= 1 {
-            Ok(self.0.resize(new_len, value))
+            self.0.resize(new_len, value);
+            Ok(())
         } else {
             Err(Size0Error)
         }
