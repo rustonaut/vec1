@@ -84,14 +84,11 @@ pub struct Size0Error;
 
 impl fmt::Display for Size0Error {
     fn fmt(&self, fter: &mut fmt::Formatter) -> fmt::Result {
-        write!(fter, "{}", self.description())
+        #[allow(deprecated)]
+        write!(fter, "Cannot produce a Vec1 with a length of zero.")
     }
 }
-impl StdError for Size0Error {
-    fn description(&self) -> &str {
-        "Cannot produce a Vec1 with a length of zero."
-    }
-}
+impl StdError for Size0Error {}
 
 type Vec1Result<T> = StdResult<T, Size0Error>;
 
