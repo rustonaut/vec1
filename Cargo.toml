@@ -9,6 +9,7 @@ license = "MIT OR Apache-2.0"
 name = "vec1"
 readme = "./README.md"
 repository = "https://github.com/rustonaut/vec1/"
+edition = "2018"
 
 [features]
 # Keep feature as to not brake code which used it in the past.

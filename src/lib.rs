@@ -35,11 +35,6 @@
 //! }
 //!
 //! ```
-#[cfg(feature = "serde")]
-#[macro_use]
-extern crate serde;
-#[cfg(all(feature = "serde", test))]
-extern crate serde_json;
 
 use std::{
     borrow::{Borrow, BorrowMut},
@@ -116,7 +111,7 @@ type Vec1Result<T> = StdResult<T, Size0Error>;
 /// e.g. `Vec1` does not implement drain currently as drains generic argument
 /// is `R: RangeArgument<usize>` and `RangeArgument` is not stable.
 #[derive(Debug, Clone, Eq, Hash, PartialOrd, Ord)]
-#[cfg_attr(feature = "serde", derive(Serialize))]
+#[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct Vec1<T>(Vec<T>);
 
 impl<T> IntoIterator for Vec1<T> {
@@ -836,7 +831,7 @@ where
     where
         D: ::serde::Deserializer<'de>,
     {
-        use serde::de::Error;
+        use ::serde::de::Error;
 
         let v = Vec::deserialize(deserializer)?;
         let v1 = Vec1::try_from_vec(v).map_err(|e| D::Error::custom(e))?;
