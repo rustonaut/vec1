@@ -1,6 +1,17 @@
 
 # Change Log
 
+## Version 1.5.0 (21.05.2020)
+
+- minimal rust version is now 1.34
+- `TryFrom` is no longer feature gated
+- `vec1![]` now allows trailing `,` in all cases
+- `Size0Error` now no longer has a custom
+  `std::error::Error::description()` implementation.
+- fixed various clippy::pedantic warnings
+- updated `Cargo.toml`
+- `cargo fmt`
+
 ## Version 1.4.0 (26.03.2019)
 
 New trait impl:
@@ -21,7 +32,7 @@ New Into impl for following types:
 
 ### Unstable/Nightly features
 
-New TryFrom impl for follwing types:
+New TryFrom impl for following types:
 - Box<[T]>
 - BinaryHeap<T>
 - VecDeque<T>

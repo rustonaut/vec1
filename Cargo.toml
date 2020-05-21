@@ -1,6 +1,6 @@
 [package]
-version = "1.4.0"
-authors = ["Philipp Korber <p.korber@1aim.com>"]
+version = "1.5.0"
+authors = ["Philipp Korber <philippkorber@gmail.com>"]
 categories = ["data-structures"]
 description = "a std Vec wrapper assuring that it has at least 1 element"
 documentation = "https://docs.rs/vec1"
@@ -8,14 +8,15 @@ keywords = ["vec", "min", "length", "1"]
 license = "MIT OR Apache-2.0"
 name = "vec1"
 readme = "./README.md"
-repository = "https://github.com/1aim/vec1/"
+repository = "https://github.com/rustonaut/vec1/"
 
 [features]
-# This feature is unstable due to TryFrom being unstable, once
-# TryFrom is stable the impl will be available without feature.
-# Still even then we will keep the feature for keeping compatiblility
-# with nightly programms, even through it won't have any effect
-# anymore once TryFrom is stable and integrated.
+# Keep feature as to not brake code which used it in the past.
+# The Vec1 crate roughly traces rust stable=1 but tries to keep
+# as much compatiblility with older compiler versions. But it
+# should never require changes to older projects compiled with
+# a new enough rust compiler. As such this features needs to
+# stay in existence.
 unstable-nightly-try-from-impl = []
 
 [dependencies]
