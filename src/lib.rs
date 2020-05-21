@@ -44,17 +44,18 @@ extern crate serde_json;
 use std::{
     borrow::{Borrow, BorrowMut},
     collections::BinaryHeap,
+    collections::VecDeque,
     convert::TryFrom,
     error::Error as StdError,
     ffi::CString,
     fmt::{self, Debug},
-    iter::{Extend, IntoIterator, Peekable, ExactSizeIterator, DoubleEndedIterator},
-    ops::{Deref, DerefMut, Index, IndexMut, RangeBounds, Bound},
-    result::Result as StdResult,
-    slice, vec,
-    collections::VecDeque,
+    iter::{DoubleEndedIterator, ExactSizeIterator, Extend, IntoIterator, Peekable},
+    ops::{Bound, Deref, DerefMut, Index, IndexMut, RangeBounds},
     rc::Rc,
-    sync::Arc
+    result::Result as StdResult,
+    slice,
+    sync::Arc,
+    vec,
 };
 
 /// A macro similar to `vec!` to create a `Vec1`.
@@ -522,7 +523,6 @@ impl<T> Vec1<T> {
 }
 
 impl Vec1<u8> {
-
     /// Works like `&[u8].to_ascii_uppercase()` but returns a `Vec1<T>` instead of a `Vec<T>`
     pub fn to_ascii_uppercase(&self) -> Vec1<u8> {
         Vec1(self.0.to_ascii_uppercase())
@@ -537,8 +537,7 @@ impl Vec1<u8> {
 fn range_covers_vec1(range: &impl RangeBounds<usize>, vec1_len: usize) -> bool {
     // As this is only used for vec1 we don't need the if vec_len == 0.
     // if vec_len == 0 { return true; }
-    range_covers_vec_start(range)
-    && range_covers_vec_end(range, vec1_len)
+    range_covers_vec_start(range) && range_covers_vec_end(range, vec1_len)
 }
 
 fn range_covers_vec_start(range: &impl RangeBounds<usize>) -> bool {
@@ -547,7 +546,7 @@ fn range_covers_vec_start(range: &impl RangeBounds<usize>) -> bool {
         // there is no idx before 0, so if you start from a excluded index
         // you can not cover 0
         Bound::Excluded(_idx) => false,
-        Bound::Unbounded => true
+        Bound::Unbounded => true,
     }
 }
 
@@ -555,32 +554,33 @@ fn range_covers_vec_end(range: &impl RangeBounds<usize>, len: usize) -> bool {
     match range.end_bound() {
         Bound::Included(idx) => {
             // covers all if it goes up to the last idx which is len-1
-            *idx >= len-1
-        },
+            *idx >= len - 1
+        }
         Bound::Excluded(idx) => {
             // len = max_idx + 1, so if excl_end = len it's > max_idx, so >= is correct
             *idx >= len
-        },
-        Bound::Unbounded => true
+        }
+        Bound::Unbounded => true,
     }
 }
 
 pub struct Splice<'a, I: Iterator + 'a> {
-    vec_splice: vec::Splice<'a, Peekable<I>>
+    vec_splice: vec::Splice<'a, Peekable<I>>,
 }
 
 impl<'a, I> Debug for Splice<'a, I>
-    where I: Iterator + 'a, vec::Splice<'a, Peekable<I>>: Debug
+where
+    I: Iterator + 'a,
+    vec::Splice<'a, Peekable<I>>: Debug,
 {
     fn fmt(&self, fter: &mut fmt::Formatter) -> fmt::Result {
-        fter.debug_tuple("Splice")
-            .field(&self.vec_splice)
-            .finish()
+        fter.debug_tuple("Splice").field(&self.vec_splice).finish()
     }
 }
 
 impl<'a, I> Iterator for Splice<'a, I>
-    where I: Iterator
+where
+    I: Iterator,
 {
     type Item = I::Item;
 
@@ -593,19 +593,16 @@ impl<'a, I> Iterator for Splice<'a, I>
     }
 }
 
-impl<'a, I> ExactSizeIterator for Splice<'a, I>
-    where I: Iterator
-{}
+impl<'a, I> ExactSizeIterator for Splice<'a, I> where I: Iterator {}
 
 impl<'a, I> DoubleEndedIterator for Splice<'a, I>
-    where I: Iterator
+where
+    I: Iterator,
 {
     fn next_back(&mut self) -> Option<Self::Item> {
         self.vec_splice.next_back()
     }
 }
-
-
 
 macro_rules! impl_wrapper {
     (pub $T:ident>
@@ -868,7 +865,6 @@ impl<T> std::convert::TryFrom<Vec<T>> for Vec1<T> {
     }
 }
 
-
 macro_rules! wrapper_from_to_try_from {
     (impl Into + impl[$($tv:tt)*] TryFrom<$tf:ty> for Vec1<$et:ty> $($tail:tt)*) => (
 
@@ -917,7 +913,6 @@ impl TryFrom<CString> for Vec1<u8> {
         }
     }
 }
-
 
 #[cfg(test)]
 mod test {
@@ -987,7 +982,6 @@ mod test {
     mod Vec1 {
         #![allow(non_snake_case)]
         use super::super::*;
-
 
         #[test]
         fn deref_slice() {
@@ -1184,32 +1178,23 @@ mod test {
 
         #[test]
         fn splice_with_full_range_and_no_replace_values_fails() {
-            let mut vec = Vec1::try_from_vec(vec![1, 2, 3, 4, 5])
-                .unwrap();
+            let mut vec = Vec1::try_from_vec(vec![1, 2, 3, 4, 5]).unwrap();
             let res = vec.splice(.., vec![]);
             assert!(res.is_err());
         }
 
         #[test]
         fn splice_with_full_range_but_non_empty_iter_works() {
-            let mut vec = Vec1::try_from_vec(vec![1, 2, 3, 4, 5])
-                .unwrap();
-            let res: Vec<_> = vec
-                .splice(.., vec![11])
-                .unwrap()
-                .collect();
+            let mut vec = Vec1::try_from_vec(vec![1, 2, 3, 4, 5]).unwrap();
+            let res: Vec<_> = vec.splice(.., vec![11]).unwrap().collect();
             assert_eq!(res, vec![1, 2, 3, 4, 5]);
             assert_eq!(vec, vec![11]);
         }
 
         #[test]
         fn splice_with_non_full_range_but_empty_iter_works() {
-            let mut vec = Vec1::try_from_vec(vec![1, 2, 3, 4, 5])
-                .unwrap();
-            let res: Vec<_> = vec
-                .splice(1.., vec![])
-                .unwrap()
-                .collect();
+            let mut vec = Vec1::try_from_vec(vec![1, 2, 3, 4, 5]).unwrap();
+            let res: Vec<_> = vec.splice(1.., vec![]).unwrap().collect();
 
             assert_eq!(res, vec![2, 3, 4, 5]);
             assert_eq!(vec, vec![1]);
@@ -1219,7 +1204,7 @@ mod test {
         fn deriving_default_works() {
             #[derive(Default)]
             struct Example {
-                field: Vec1<u8>
+                field: Vec1<u8>,
             }
 
             let example = Example::default();
@@ -1268,11 +1253,9 @@ mod test {
         #[test]
         fn has_a_try_from_boxed_slice() {
             use std::convert::TryFrom;
-            let bs: Box<[u8]> = vec![1,2,3].into();
-            let vec = Vec1::<u8>::try_from(bs)
-                .unwrap();
+            let bs: Box<[u8]> = vec![1, 2, 3].into();
+            let vec = Vec1::<u8>::try_from(bs).unwrap();
             assert_eq!(vec, vec![1u8, 2, 3]);
         }
     }
-
 }
