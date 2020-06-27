@@ -35,6 +35,20 @@ fn greet(names: Vec1<&str>) {
 
 ```
 
+Support for `serde::{Serialize, Deserialize}`
+-------------
+
+The `Vec1` type supports both of [`serde`](https://serde.rs/)'s `Serialize` and 
+`Deserialize` traits, but this feature is only enabled when the `"serde"` feature
+flag is specified in your project's `Cargo.toml` file:
+
+```toml
+# Cargo.toml
+
+[dependencies]
+vec1 = { version = "...", features = ["serde"] }
+```
+
 License
 --------
 
