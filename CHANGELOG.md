@@ -1,11 +1,13 @@
 
 # Change Log
 
-## Unpublished/master
+## Version 1.5.1 (01.07.2020)
 
 - Updated project to `edition="2018"` (not that this is
   a purely internal change and doesn't affect the API
   interface or minimal supported rustc version)
+- Added [CONTRIBUTORS.md](./CONTRIBUTORS.md)
+- Updated [README.md](./README.md)
 
 ## Version 1.5.0 (21.05.2020)
 

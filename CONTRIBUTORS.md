@@ -5,6 +5,10 @@
 
 Names sorted alphabetically by github nickname.
 
+## eignnx @eignnx
+
+- [mention serde support in README](https://github.com/rustonaut/vec1/pull/16)
+
 ## Erich Gubler @ErichDonGubler
 
 - [Remove feature flag around `TryFrom`, now that it's landed in Rust 1.34.0 ](https://github.com/rustonaut/vec1/pull/9)

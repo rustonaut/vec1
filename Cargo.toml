@@ -1,5 +1,5 @@
 [package]
-version = "1.5.0"
+version = "1.5.1"
 authors = ["Philipp Korber <philippkorber@gmail.com>"]
 categories = ["data-structures"]
 description = "a std Vec wrapper assuring that it has at least 1 element"
