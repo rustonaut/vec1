@@ -515,6 +515,39 @@ impl<T> Vec1<T> {
             Ok(Splice { vec_splice })
         }
     }
+
+    /// Splits off the first element of this vector and returns it together with the rest of the
+    /// vector.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use vec1::vec1;
+    /// assert_eq!((0, vec![]), vec1![0].split_off_first());
+    /// assert_eq!((0, vec![1, 2, 3]), vec1![0, 1, 2, 3].split_off_first());
+    /// ```
+    pub fn split_off_first(self) -> (T, Vec<T>) {
+        let mut vec = self.0;
+        let first = vec.remove(0);
+        (first, vec)
+    }
+
+    /// Splits off the last element of this vector and returns it together with the rest of the
+    /// vector.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// # use vec1::vec1;
+    /// assert_eq!((vec![], 0), vec1![0].split_off_last());
+    /// assert_eq!((vec![0, 1, 2], 3), vec1![0, 1, 2, 3].split_off_last());
+    /// ```
+    pub fn split_off_last(self) -> (Vec<T>, T) {
+        let mut vec = self.0;
+        let last = vec.remove(vec.len() - 1);
+        (vec, last)
+    }
+
 }
 
 impl Vec1<u8> {

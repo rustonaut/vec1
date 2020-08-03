@@ -1,6 +1,10 @@
 
 # Change Log
 
+## Unreleased
+
+- Added the `split_off_first` and `split_off_last` methods.
+
 ## Version 1.5.1 (01.07.2020)
 
 - Updated project to `edition="2018"` (not that this is
