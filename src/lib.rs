@@ -107,7 +107,7 @@ type Vec1Result<T> = StdResult<T, Size0Error>;
 ///
 /// All stable traits and methods implemented on `Vec<T>` _should_ also
 /// be implemented on `Vec1<T>` (except if they make no sense to implement
-/// due to the len 1 guarantee). Note that some small thinks are still missing
+/// due to the len 1 guarantee). Note that some small things are still missing
 /// e.g. `Vec1` does not implement drain currently as drains generic argument
 /// is `R: RangeArgument<usize>` and `RangeArgument` is not stable.
 #[derive(Debug, Clone, Eq, Hash, PartialOrd, Ord)]
