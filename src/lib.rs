@@ -424,7 +424,7 @@ impl<T> Vec1<T> {
         }
     }
 
-    /// Calls `split_of` on the inner vec if both resulting parts have length >= 1.
+    /// Calls `split_off` on the inner vec if both resulting parts have length >= 1.
     ///
     /// # Errors
     ///
