@@ -1,7 +1,7 @@
 
 # Change Log
 
-## Unreleased
+## Version 1.6.0 (11.08.2020)
 
 - Added the `split_off_first` and `split_off_last` methods.
 

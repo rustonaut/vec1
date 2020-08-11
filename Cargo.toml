@@ -1,6 +1,6 @@
 [package]
-version = "1.5.1"
-authors = ["Philipp Korber <philippkorber@gmail.com>"]
+version = "1.6.0"
+authors = ["Philipp Korber <philipp@korber.dev>"]
 categories = ["data-structures"]
 description = "a std Vec wrapper assuring that it has at least 1 element"
 documentation = "https://docs.rs/vec1"
