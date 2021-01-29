@@ -1,5 +1,5 @@
 use std::{fmt::{self, Debug}, ops::Deref, cmp::{Ord, Ordering, PartialEq, Eq}, hash::{Hash, Hasher},
-    convert::TryFrom};
+    convert::{TryFrom, TryInto}};
 use super::Size0Error;
 
 use smallvec_v1_ as smallvec;
@@ -156,6 +156,59 @@ where
     pub fn try_from_buf_and_len(buf: A, len: usize) -> Result<Self> {
         Self::try_from_smallvec(SmallVec::from_buf_and_len(buf, len))
     }
+
+    /// Converts this instance into the underlying [`SmallVec<A>`] instance.
+    pub fn into_smallvec(self) -> SmallVec<A> {
+        self.0
+    }
+
+    /// Converts this instance into a [`Vec<A::Item>`] instance.
+    pub fn into_vec(self) -> Vec<A::Item> {
+        self.0.into_vec()
+    }
+
+    /// Converts this instance into the underlying buffer/array.
+    ///
+    /// This fails if the `SmallVec1` has not the exact length of
+    /// the underlying buffers/arrays capacity.
+    ///
+    /// This matches [`SmallVec::into_inner()`] in that if the
+    //  length is to large or small self is returned as error.
+    pub fn into_inner(self) -> std::result::Result<A, Self> {
+        self.0.into_inner().map_err(SmallVec1)
+    }
+
+    /// Forwards to [`SmallVec::into_boxed_slice()`].
+    pub fn into_boxed_slice(self) -> Box<[A::Item]> {
+        self.0.into_boxed_slice()
+    }
+}
+
+impl<A> Into<SmallVec<A>> for SmallVec1<A>
+where
+    A: Array
+{
+    fn into(self) -> SmallVec<A> {
+        self.into_smallvec()
+    }
+}
+
+impl<A> Into<Vec<A::Item>> for SmallVec1<A>
+where
+    A: Array
+{
+    fn into(self) -> Vec<A::Item> {
+        self.into_vec()
+    }
+}
+
+impl<A> Into<Box<[A::Item]>> for SmallVec1<A>
+where
+    A: Array
+{
+    fn into(self) -> Box<[A::Item]> {
+        self.into_boxed_slice()
+    }
 }
 
 impl<A, T> TryFrom<Vec<T>> for SmallVec1<A>
@@ -178,7 +231,7 @@ where
     }
 }
 
-macro_rules! impl_try_from_buf_trait {
+macro_rules! impl_try_from_into_buf_trait {
     ($($size:expr),*) => ($(
         impl<T> TryFrom<[T; $size]> for SmallVec1<[T; $size]> {
             type Error = Size0Error;
@@ -186,11 +239,18 @@ macro_rules! impl_try_from_buf_trait {
                 Self::try_from_buf(vec)
             }
         }
+
+        impl<T> TryInto<[T; $size]> for SmallVec1<[T; $size]> {
+            type Error = Self;
+            fn try_into(self) -> std::result::Result<[T; $size], Self> {
+                self.into_inner()
+            }
+        }
     )*);
 }
 
 //FIXME support const_generics feature
-impl_try_from_buf_trait!(
+impl_try_from_into_buf_trait!(
     // values from smallvec crate
     0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
     17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31,
@@ -443,9 +503,59 @@ mod tests {
     fn impl_try_from_traits() {
         let _ = SmallVec1::<[u8; 4]>::try_from(vec![1,2,3]).unwrap();
         let _ = SmallVec1::<[u8; 4]>::try_from(vec![]).unwrap_err();
-        let _ = SmallVec1::<[u8; 4]>::try_from(smallvec::smallvec![1,2,3]).unwrap();
-        let _ = SmallVec1::<[u8; 4]>::try_from(smallvec::smallvec![]).unwrap_err();
+        let _ = SmallVec1::<[u8; 4]>::try_from(smallvec![1,2,3]).unwrap();
+        let _ = SmallVec1::<[u8; 4]>::try_from(smallvec![]).unwrap_err();
         let _ = SmallVec1::<[u8; 4]>::try_from([1u8,2,3,4]).unwrap();
         let _ = SmallVec1::<[u8; 0]>::try_from([] as [u8; 0]).unwrap_err();
+    }
+
+    #[test]
+    fn into_smallvec() {
+        let a: SmallVec1<[u8; 4]> = smallvec1![1,3,2];
+        let a = a.into_smallvec();
+        let b: SmallVec<[u8; 4]> = smallvec![1,3,2];
+        assert_eq!(a, b);
+    }
+
+    #[test]
+    fn into_vec() {
+        let a: SmallVec1<[u8; 4]> = smallvec1![1,3,2];
+        let a: Vec<u8> = a.into_vec();
+        assert_eq!(a, vec![1,3,2])
+    }
+
+    #[test]
+    fn into_inner() {
+        let a: SmallVec1<[u8; 4]> = smallvec1![1,3,2,4];
+        let a: [u8; 4] = a.into_inner().unwrap();
+        assert_eq!(a, [1, 3, 2, 4])
+    }
+
+    #[test]
+    fn into_boxed_slice() {
+        let a: SmallVec1<[u8; 4]> = smallvec1![1,3,2,4];
+        let a: Box<[u8]> = a.into_boxed_slice();
+        assert_eq!(&*a, &[1u8, 3, 2, 4] as &[u8])
+    }
+
+
+    #[test]
+    fn into_traits() {
+        let a: SmallVec1<[u8; 4]> = smallvec1![1,3,2,4];
+        let _: Vec<u8> = a.into();
+
+        let a: SmallVec1<[u8; 4]> = smallvec1![1,3,2,4];
+        let _: SmallVec<[u8; 4]> = a.into();
+
+        let a: SmallVec1<[u8; 4]> = smallvec1![1,3,2,4, 5];
+        let _: Box<[u8]> = a.into();
+
+        let a: SmallVec1<[u8; 4]> = smallvec1![1,3,2,4];
+        let a: std::result::Result<[u8; 4], _> = a.try_into();
+        a.unwrap();
+
+        let a: SmallVec1<[u8; 4]> = smallvec1![1,3,2];
+        let a: std::result::Result<[u8; 4],_> = a.try_into();
+        a.unwrap_err();
     }
 }
