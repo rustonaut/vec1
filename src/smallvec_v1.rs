@@ -1,4 +1,5 @@
-use std::{fmt::{self, Debug}, ops::Deref, cmp::{Ord, Ordering, PartialEq, Eq}, hash::{Hash, Hasher}};
+use std::{fmt::{self, Debug}, ops::Deref, cmp::{Ord, Ordering, PartialEq, Eq}, hash::{Hash, Hasher},
+    convert::TryFrom};
 use super::Size0Error;
 
 use smallvec_v1_ as smallvec;
@@ -155,8 +156,48 @@ where
     pub fn try_from_buf_and_len(buf: A, len: usize) -> Result<Self> {
         Self::try_from_smallvec(SmallVec::from_buf_and_len(buf, len))
     }
-
 }
+
+impl<A, T> TryFrom<Vec<T>> for SmallVec1<A>
+where
+    A: Array<Item=T>
+{
+    type Error = Size0Error;
+    fn try_from(vec: Vec<T>) -> Result<Self> {
+        Self::try_from_vec(vec)
+    }
+}
+
+impl<A> TryFrom<SmallVec<A>> for SmallVec1<A>
+where
+    A: Array
+{
+    type Error = Size0Error;
+    fn try_from(vec: SmallVec<A>) -> Result<Self> {
+        Self::try_from_smallvec(vec)
+    }
+}
+
+macro_rules! impl_try_from_buf_trait {
+    ($($size:expr),*) => ($(
+        impl<T> TryFrom<[T; $size]> for SmallVec1<[T; $size]> {
+            type Error = Size0Error;
+            fn try_from(vec: [T; $size]) -> Result<Self> {
+                Self::try_from_buf(vec)
+            }
+        }
+    )*);
+}
+
+//FIXME support const_generics feature
+impl_try_from_buf_trait!(
+    // values from smallvec crate
+    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
+    17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31,
+    32, 36, 0x40, 0x60, 0x80, 0x100, 0x200, 0x400, 0x600, 0x800,
+    0x1000, 0x2000, 0x4000, 0x6000, 0x8000, 0x10_000, 0x20_000,
+    0x40_000, 0x60_000, 0x80_000, 0x100_000
+);
 
 impl<A> Debug for SmallVec1<A>
 where
@@ -398,5 +439,13 @@ mod tests {
         let _ = SmallVec1::try_from_buf_and_len([] as [u8; 0], 3);
     }
 
-
+    #[test]
+    fn impl_try_from_traits() {
+        let _ = SmallVec1::<[u8; 4]>::try_from(vec![1,2,3]).unwrap();
+        let _ = SmallVec1::<[u8; 4]>::try_from(vec![]).unwrap_err();
+        let _ = SmallVec1::<[u8; 4]>::try_from(smallvec::smallvec![1,2,3]).unwrap();
+        let _ = SmallVec1::<[u8; 4]>::try_from(smallvec::smallvec![]).unwrap_err();
+        let _ = SmallVec1::<[u8; 4]>::try_from([1u8,2,3,4]).unwrap();
+        let _ = SmallVec1::<[u8; 0]>::try_from([] as [u8; 0]).unwrap_err();
+    }
 }
