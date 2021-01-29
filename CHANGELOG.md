@@ -1,6 +1,11 @@
 
 # Change Log
 
+## Version 1.7.0 (pending)
+
+- minimal rust version is now 1.47
+- (pending) support for smallvec (v>=1.6.1)
+
 ## Version 1.6.0 (11.08.2020)
 
 - Added the `split_off_first` and `split_off_last` methods.

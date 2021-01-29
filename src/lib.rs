@@ -36,6 +36,13 @@
 //!
 //! ```
 
+#[doc(hidden)]
+#[cfg(feature="smallvec-v1")]
+pub extern crate smallvec_v1_;
+
+#[cfg(feature="smallvec-v1")]
+pub mod smallvec_v1;
+
 use std::{
     borrow::{Borrow, BorrowMut},
     collections::BinaryHeap,
@@ -107,9 +114,9 @@ type Vec1Result<T> = StdResult<T, Size0Error>;
 ///
 /// All stable traits and methods implemented on `Vec<T>` _should_ also
 /// be implemented on `Vec1<T>` (except if they make no sense to implement
-/// due to the len 1 guarantee). Note that some small things are still missing
-/// e.g. `Vec1` does not implement drain currently as drains generic argument
-/// is `R: RangeArgument<usize>` and `RangeArgument` is not stable.
+/// due to the len 1 guarantee). Be aware implementations may lack behind a bit,
+/// fell free to open a issue/make a PR, but please search closed and open
+/// issues for duplicates first.
 #[derive(Debug, Clone, Eq, Hash, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct Vec1<T>(Vec<T>);

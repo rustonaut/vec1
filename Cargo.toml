@@ -19,9 +19,14 @@ edition = "2018"
 # a new enough rust compiler. As such this features needs to
 # stay in existence.
 unstable-nightly-try-from-impl = []
+smallvec-v1 = ["smallvec_v1_"]
 
 [dependencies]
 serde = { version = "1.0", optional = true, features = ["derive"] }
+# In the future we will support smallvec v1 and v2 so if we had
+# a optional dependency called smallvec people might acidentally
+# pull it in as feature and create anoyences wrt. backward compatibility.
+smallvec_v1_ = { package = "smallvec",  version = "1.6.1", optional = true}
 
 [dev-dependencies]
 serde_json = "1.0"
