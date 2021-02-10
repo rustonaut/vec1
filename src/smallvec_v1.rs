@@ -15,7 +15,7 @@
 //! ```rust
 //! use vec1::smallvec_v1::{smallvec1, SmallVec1};
 //! let v: SmallVec1<[u8; 4]> = smallvec1![1u8, 2];
-//!  assert_eq!(v, vec![1,2]);
+//! assert_eq!(&*v, &*vec![1u8,2]);
 //! ```
 
 use std::{
@@ -73,7 +73,6 @@ macro_rules! __smallvec1_macro_v1 {
 /// due to the len 1 guarantee). Be aware implementations may lack behind a bit,
 /// fell free to open a issue/make a PR, but please search closed and open
 /// issues for duplicates first.
-//FIXME #[cfg_attr(feature = "serde", derive(serde::Serialize))]
 pub struct SmallVec1<A>(SmallVec<A>)
 where
     A: smallvec::Array;
@@ -787,6 +786,75 @@ impl<A: Array> Extend<A::Item> for SmallVec1<A> {
     }
 }
 
+//Note: We can not (simply) have if feature serde and feature smallvec enable
+//      dependency smallvec/serde, but we can mirror the serde implementation.
+#[cfg(feature = "serde")]
+const _: () = {
+    use std::{marker::PhantomData, result::Result};
+    use serde::{
+        de::{SeqAccess,Deserialize, Visitor, Deserializer, Error as _},
+        ser::{Serialize, Serializer, SerializeSeq}
+    };
+
+    impl<A> Serialize for SmallVec1<A>
+    where
+        A: Array,
+        A::Item: Serialize,
+    {
+        fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+            let mut seq_ser = serializer.serialize_seq(Some(self.len()))?;
+            for item in self {
+                seq_ser.serialize_element(&item)?;
+            }
+            seq_ser.end()
+        }
+    }
+
+    impl<'de, A> Deserialize<'de> for SmallVec1<A>
+    where
+        A: Array,
+        A::Item: Deserialize<'de>,
+    {
+        fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+            deserializer.deserialize_seq(SmallVec1Visitor {
+                _type_carry: PhantomData,
+            })
+        }
+    }
+    struct SmallVec1Visitor<A> {
+        _type_carry: PhantomData<A>,
+    }
+
+    impl<'de, A> Visitor<'de> for SmallVec1Visitor<A>
+    where
+        A: Array,
+        A::Item: Deserialize<'de>,
+    {
+        type Value = SmallVec1<A>;
+
+        fn expecting(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
+            formatter.write_str("a sequence")
+        }
+
+        fn visit_seq<B>(self, mut seq: B) -> Result<Self::Value, B::Error>
+        where
+            B: SeqAccess<'de>,
+        {
+            let len = seq.size_hint().unwrap_or(0);
+            let mut smallvec = SmallVec::new();
+            smallvec.try_reserve(len).map_err(B::Error::custom)?;
+
+            while let Some(value) = seq.next_element()? {
+                smallvec.push(value);
+            }
+
+            SmallVec1::try_from(smallvec).map_err(B::Error::custom)
+        }
+    }
+};
+
+
+
 
 #[cfg(test)]
 mod tests {
@@ -1333,6 +1401,32 @@ mod tests {
         let a: SmallVec1<[u8; 4]> = smallvec1![32, 43];
         let exp: SmallVec<[u8; 4]> = smallvec![32];
         assert_eq!((exp, 43), a.split_off_last());
+    }
+
+    #[cfg(feature="serde")]
+    #[test]
+    fn can_be_serialized_and_deserialized() {
+        let a: SmallVec1<[u8; 4]> = smallvec1![32,12,14,18,201];
+        let json_str = serde_json::to_string(&a).unwrap();
+        let b: SmallVec1<[u8; 4]> = serde_json::from_str(&json_str).unwrap();
+        assert_eq!(a, b);
+    }
+
+    #[cfg(feature="serde")]
+    #[test]
+    fn array_size_is_not_serialized() {
+        let a: SmallVec1<[u8; 4]> = smallvec1![32,12,14,18,201];
+        let json_str = serde_json::to_string(&a).unwrap();
+        let b: SmallVec1<[u8; 8]> = serde_json::from_str(&json_str).unwrap();
+        assert_eq!(a, b);
+    }
+
+    #[cfg(feature="serde")]
+    #[test]
+    fn does_not_allow_empty_deserialization() {
+        let a = Vec::<u8>::new();
+        let json_str = serde_json::to_string(&a).unwrap();
+        serde_json::from_str::<SmallVec1<[u8;8]>>(&json_str).unwrap_err();
     }
 
 
