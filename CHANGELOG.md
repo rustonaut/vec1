@@ -4,7 +4,7 @@
 ## Version 1.7.0 (pending)
 
 - minimal rust version is now 1.47
-- (pending) support for smallvec (v>=1.6.1)
+- support for SmallVec1 backed by the smallvec crate (v>=1.6.1)
 
 ## Version 1.6.0 (11.08.2020)
 
