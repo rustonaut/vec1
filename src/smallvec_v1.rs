@@ -20,7 +20,10 @@
 
 use crate::Size0Error;
 
-use std::convert::{TryFrom, TryInto};
+use std::{
+    convert::{TryFrom, TryInto},
+    io,
+};
 
 use smallvec::*;
 use smallvec_v1_ as smallvec;
@@ -265,6 +268,31 @@ where
 {
     fn into(self) -> Box<[A::Item]> {
         self.into_boxed_slice()
+    }
+}
+
+impl<A> io::Write for SmallVec1<A>
+where
+    A: Array<Item = u8>,
+{
+    #[inline]
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        self.0.write(buf)
+    }
+
+    #[inline]
+    fn write_vectored(&mut self, bufs: &[io::IoSlice<'_>]) -> io::Result<usize> {
+        self.0.write_vectored(bufs)
+    }
+
+    #[inline]
+    fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
+        self.0.write_all(buf)
+    }
+
+    #[inline]
+    fn flush(&mut self) -> io::Result<()> {
+        self.0.flush()
     }
 }
 

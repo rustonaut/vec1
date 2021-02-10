@@ -51,7 +51,7 @@ use std::{
     convert::TryFrom,
     error::Error as StdError,
     ffi::CString,
-    fmt,
+    fmt, io,
     iter::{DoubleEndedIterator, ExactSizeIterator, Extend, IntoIterator, Peekable},
     ops::{Bound, RangeBounds},
     rc::Rc,
@@ -526,6 +526,28 @@ impl TryFrom<CString> for Vec1<u8> {
         } else {
             Ok(Vec1(string.into()))
         }
+    }
+}
+
+impl io::Write for Vec1<u8> {
+    #[inline]
+    fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
+        self.0.write(buf)
+    }
+
+    #[inline]
+    fn write_vectored(&mut self, bufs: &[io::IoSlice<'_>]) -> io::Result<usize> {
+        self.0.write_vectored(bufs)
+    }
+
+    #[inline]
+    fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
+        self.0.write_all(buf)
+    }
+
+    #[inline]
+    fn flush(&mut self) -> io::Result<()> {
+        self.0.flush()
     }
 }
 
