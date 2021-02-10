@@ -39,25 +39,30 @@
 mod shared;
 
 #[doc(hidden)]
-#[cfg(feature="smallvec-v1")]
+#[cfg(feature = "smallvec-v1")]
 pub extern crate smallvec_v1_;
 
-#[cfg(feature="smallvec-v1")]
+#[cfg(feature = "smallvec-v1")]
 pub mod smallvec_v1;
 
 use std::{
     borrow::{Borrow, BorrowMut},
+    cmp::{Eq, Ord, Ordering, PartialEq},
+    convert::TryFrom,
+    fmt::{self, Debug},
+    hash::{Hash, Hasher},
+    ops::{Deref, DerefMut, Index, IndexMut},
+    slice::SliceIndex,
+};
+use std::{
     collections::BinaryHeap,
     collections::VecDeque,
-    convert::TryFrom,
     error::Error as StdError,
     ffi::CString,
-    fmt::{self, Debug},
     iter::{DoubleEndedIterator, ExactSizeIterator, Extend, IntoIterator, Peekable},
-    ops::{Bound, Deref, DerefMut, Index, IndexMut, RangeBounds},
+    ops::{Bound, RangeBounds},
     rc::Rc,
     result::Result as StdResult,
-    slice,
     sync::Arc,
     vec,
 };
@@ -95,33 +100,39 @@ impl fmt::Display for Size0Error {
 }
 impl StdError for Size0Error {}
 
+type Result<T> = std::result::Result<T, Size0Error>;
 type Vec1Result<T> = StdResult<T, Size0Error>;
 
-/// `std::vec::Vec` wrapper which guarantees to have at least 1 element.
-///
-/// `Vec1<T>` dereferences to `&[T]` and `&mut [T]` as functionality
-/// exposed through this can not change the length.
-///
-/// Methods of `Vec` which can be called without reducing the length
-/// (e.g. `capacity()`, `reserve()`) are exposed through wrappers
-/// with the same function signature.
-///
-/// Methods of `Vec` which could reduce the length to 0
-/// are implemented with a `try_` prefix returning a `Result`.
-/// (e.g. `try_pop(&self)`, `try_truncate()`, etc.).
-///
-/// Methods with returned `Option<T>` with `None` if the length was 0
-/// (and do not reduce the length) now return T. (e.g. `first`,
-/// `last`, `first_mut`, etc.).
-///
-/// All stable traits and methods implemented on `Vec<T>` _should_ also
-/// be implemented on `Vec1<T>` (except if they make no sense to implement
-/// due to the len 1 guarantee). Be aware implementations may lack behind a bit,
-/// fell free to open a issue/make a PR, but please search closed and open
-/// issues for duplicates first.
-#[derive(Debug, Clone, Eq, Hash, PartialOrd, Ord)]
-#[cfg_attr(feature = "serde", derive(serde::Serialize))]
-pub struct Vec1<T>(Vec<T>);
+shared_impl! {
+    base_bounds_macro = ,
+    item_ty_macro = I,
+
+    /// `std::vec::Vec` wrapper which guarantees to have at least 1 element.
+    ///
+    /// `Vec1<T>` dereferences to `&[T]` and `&mut [T]` as functionality
+    /// exposed through this can not change the length.
+    ///
+    /// Methods of `Vec` which can be called without reducing the length
+    /// (e.g. `capacity()`, `reserve()`) are exposed through wrappers
+    /// with the same function signature.
+    ///
+    /// Methods of `Vec` which could reduce the length to 0
+    /// are implemented with a `try_` prefix returning a `Result`.
+    /// (e.g. `try_pop(&self)`, `try_truncate()`, etc.).
+    ///
+    /// Methods with returned `Option<T>` with `None` if the length was 0
+    /// (and do not reduce the length) now return T. (e.g. `first`,
+    /// `last`, `first_mut`, etc.).
+    ///
+    /// All stable traits and methods implemented on `Vec<T>` _should_ also
+    /// be implemented on `Vec1<T>` (except if they make no sense to implement
+    /// due to the len 1 guarantee). Be aware implementations may lack behind a bit,
+    /// fell free to open a issue/make a PR, but please search closed and open
+    /// issues for duplicates first.
+    // #[derive(Debug, Clone, Eq, Hash, PartialOrd, Ord)]
+    // #[cfg_attr(feature = "serde", derive(serde::Serialize))]
+    pub struct Vec1<I>(Vec<I>);
+}
 
 impl<T> IntoIterator for Vec1<T> {
     type Item = T;
@@ -133,13 +144,6 @@ impl<T> IntoIterator for Vec1<T> {
 }
 
 impl<T> Vec1<T> {
-    /// Creates a new `Vec1` instance containing a single element.
-    ///
-    /// This is roughly `Vec1(vec![first])`.
-    pub fn new(first: T) -> Self {
-        Vec1(vec![first])
-    }
-
     /// Tries to create a `Vec1<T>` from a `Vec<T>`.
     ///
     /// The fact that the input is returned _as error_ if it's empty,
@@ -164,56 +168,14 @@ impl<T> Vec1<T> {
         }
     }
 
-    /// Tries to create a `Vec1<T>` from a normal `Vec<T>`.
-    ///
-    /// # Errors
-    ///
-    /// This will fail if the input `Vec<T>` is empty.
-    /// The returned error is a `Size0Error` instance, as
-    /// such this means the _input vector will be dropped if
-    /// it's empty_. But this is normally fine as it only
-    /// happens if the `Vec<T>` is empty.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # use vec1::Vec1;
-    /// let vec1 = Vec1::try_from_vec(vec![1u8, 2, 3])
-    ///     .unwrap();
-    /// assert_eq!(vec1, vec![1u8, 2, 3]);
-    /// ```
-    ///
-    /// If you need to return a `Option<Vec1<T>>` you
-    /// can use `.ok()` on the returned result:
-    ///
-    /// ```
-    /// # use vec1::Vec1;
-    /// fn foobar(input: Vec<u8>) -> Option<Vec1<u8>> {
-    ///     let mut res = Vec1::try_from_vec(input).ok()?;
-    ///     for x in res.iter_mut() {
-    ///         *x *= 2;
-    ///     }
-    ///     Some(res)
-    /// }
-    /// ```
-    pub fn try_from_vec(vec: Vec<T>) -> Vec1Result<Self> {
-        if vec.is_empty() {
-            Err(Size0Error)
-        } else {
-            Ok(Vec1(vec))
-        }
-    }
-
-    /// Creates a new `Vec1` with a given capacity and a given "first" element.
-    pub fn with_capacity(first: T, capacity: usize) -> Self {
-        let mut vec = Vec::with_capacity(capacity);
-        vec.push(first);
-        Vec1(vec)
-    }
-
     /// Turns this `Vec1` into a `Vec`.
     pub fn into_vec(self) -> Vec<T> {
         self.0
+    }
+
+    /// Return a reference to the underlying `Vec`.
+    pub fn as_vec(&self) -> &Vec<T> {
+        &self.0
     }
 
     /// Create a new `Vec1` by consuming `self` and mapping each element.
@@ -297,9 +259,9 @@ impl<T> Vec1<T> {
     /// assert_eq!(data, Err("failed"));
     /// # }
     /// ```
-    pub fn try_mapped<F, N, E>(self, map_fn: F) -> Result<Vec1<N>, E>
+    pub fn try_mapped<F, N, E>(self, map_fn: F) -> std::result::Result<Vec1<N>, E>
     where
-        F: FnMut(T) -> Result<N, E>,
+        F: FnMut(T) -> std::result::Result<N, E>,
     {
         let mut map_fn = map_fn;
         // ::collect<Result<Vec<_>>>() is uses the iterators size hint's lower bound
@@ -322,9 +284,9 @@ impl<T> Vec1<T> {
     /// Once any call to `map_fn` returns a error that error is directly
     /// returned by this method.
     ///
-    pub fn try_mapped_ref<F, N, E>(&self, map_fn: F) -> Result<Vec1<N>, E>
+    pub fn try_mapped_ref<F, N, E>(&self, map_fn: F) -> std::result::Result<Vec1<N>, E>
     where
-        F: FnMut(&T) -> Result<N, E>,
+        F: FnMut(&T) -> std::result::Result<N, E>,
     {
         let mut map_fn = map_fn;
         let mut out = Vec::with_capacity(self.len());
@@ -345,9 +307,9 @@ impl<T> Vec1<T> {
     /// Once any call to `map_fn` returns a error that error is directly
     /// returned by this method.
     ///
-    pub fn try_mapped_mut<F, N, E>(&mut self, map_fn: F) -> Result<Vec1<N>, E>
+    pub fn try_mapped_mut<F, N, E>(&mut self, map_fn: F) -> std::result::Result<Vec1<N>, E>
     where
-        F: FnMut(&mut T) -> Result<N, E>,
+        F: FnMut(&mut T) -> std::result::Result<N, E>,
     {
         let mut map_fn = map_fn;
         let mut out = Vec::with_capacity(self.len());
@@ -355,82 +317,6 @@ impl<T> Vec1<T> {
             out.push(map_fn(element)?);
         }
         Ok(Vec1(out))
-    }
-
-    /// Returns a reference to the last element.
-    ///
-    /// As `Vec1` always contains at least one element there is always a last element.
-    pub fn last(&self) -> &T {
-        //UNWRAP_SAFE: len is at least 1
-        self.0.last().unwrap()
-    }
-
-    /// Returns a mutable reference to the last element.
-    ///
-    /// As `Vec1` always contains at least one element there is always a last element.
-    pub fn last_mut(&mut self) -> &mut T {
-        //UNWRAP_SAFE: len is at least 1
-        self.0.last_mut().unwrap()
-    }
-
-    /// Returns a reference to the first element.
-    ///
-    /// As `Vec1` always contains at least one element there is always a first element.
-    pub fn first(&self) -> &T {
-        //UNWRAP_SAFE: len is at least 1
-        self.0.first().unwrap()
-    }
-
-    /// Returns a mutable reference to the first element.
-    ///
-    /// As `Vec1` always contains at least one element there is always a first element.
-    pub fn first_mut(&mut self) -> &mut T {
-        //UNWRAP_SAFE: len is at least 1
-        self.0.first_mut().unwrap()
-    }
-
-    /// Truncates the vec1 to given length.
-    ///
-    /// # Errors
-    ///
-    /// If len is 0 an error is returned as the
-    /// length >= 1 constraint must be uphold.
-    ///
-    pub fn try_truncate(&mut self, len: usize) -> Vec1Result<()> {
-        if len > 0 {
-            self.0.truncate(len);
-            Ok(())
-        } else {
-            Err(Size0Error)
-        }
-    }
-
-    /// Calls `swap_remove` on the inner vec if length >= 2.
-    ///
-    /// # Errors
-    ///
-    /// If len is 1 an error is returned as the
-    /// length >= 1 constraint must be uphold.
-    pub fn try_swap_remove(&mut self, index: usize) -> Vec1Result<T> {
-        if self.len() > 1 {
-            Ok(self.0.swap_remove(index))
-        } else {
-            Err(Size0Error)
-        }
-    }
-
-    /// Calls `remove` on the inner vec if length >= 2.
-    ///
-    /// # Errors
-    ///
-    /// If len is 1 an error is returned as the
-    /// length >= 1 constraint must be uphold.
-    pub fn try_remove(&mut self, index: usize) -> Vec1Result<T> {
-        if self.len() > 1 {
-            Ok(self.0.remove(index))
-        } else {
-            Err(Size0Error)
-        }
     }
 
     /// Calls `split_off` on the inner vec if both resulting parts have length >= 1.
@@ -446,54 +332,6 @@ impl<T> Vec1<T> {
             let out = self.0.split_off(at);
             Ok(Vec1(out))
         }
-    }
-
-    /// Calls `dedup_by_key` on the inner vec.
-    ///
-    /// While this can remove elements it will
-    /// never produce a empty vector from an non
-    /// empty vector.
-    pub fn dedup_by_key<F, K>(&mut self, key: F)
-    where
-        F: FnMut(&mut T) -> K,
-        K: PartialEq<K>,
-    {
-        self.0.dedup_by_key(key)
-    }
-
-    /// Calls `dedup_by_key` on the inner vec.
-    ///
-    /// While this can remove elements it will
-    /// never produce a empty vector from an non
-    /// empty vector.
-    pub fn dedup_by<F>(&mut self, same_bucket: F)
-    where
-        F: FnMut(&mut T, &mut T) -> bool,
-    {
-        self.0.dedup_by(same_bucket)
-    }
-
-    /// Tries to remove the last element from the `Vec1`.
-    ///
-    /// Returns an error if the length is currently 1 (so the `try_pop` would reduce
-    /// the length to 0).
-    ///
-    /// # Errors
-    ///
-    /// If len is 1 an error is returned as the
-    /// length >= 1 constraint must be uphold.
-    pub fn try_pop(&mut self) -> Vec1Result<T> {
-        if self.len() > 1 {
-            //UNWRAP_SAFE: pop on len > 1 can not be none
-            Ok(self.0.pop().unwrap())
-        } else {
-            Err(Size0Error)
-        }
-    }
-
-    /// Return a reference to the underlying `Vec`.
-    pub fn as_vec(&self) -> &Vec<T> {
-        &self.0
     }
 
     /// Calls `splice` on the underlying vec if it will not produce an empty vec.
@@ -524,39 +362,6 @@ impl<T> Vec1<T> {
             Ok(Splice { vec_splice })
         }
     }
-
-    /// Splits off the first element of this vector and returns it together with the rest of the
-    /// vector.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # use vec1::vec1;
-    /// assert_eq!((0, vec![]), vec1![0].split_off_first());
-    /// assert_eq!((0, vec![1, 2, 3]), vec1![0, 1, 2, 3].split_off_first());
-    /// ```
-    pub fn split_off_first(self) -> (T, Vec<T>) {
-        let mut vec = self.0;
-        let first = vec.remove(0);
-        (first, vec)
-    }
-
-    /// Splits off the last element of this vector and returns it together with the rest of the
-    /// vector.
-    ///
-    /// # Examples
-    ///
-    /// ```
-    /// # use vec1::vec1;
-    /// assert_eq!((vec![], 0), vec1![0].split_off_last());
-    /// assert_eq!((vec![0, 1, 2], 3), vec1![0, 1, 2, 3].split_off_last());
-    /// ```
-    pub fn split_off_last(self) -> (Vec<T>, T) {
-        let mut vec = self.0;
-        let last = vec.remove(vec.len() - 1);
-        (vec, last)
-    }
-
 }
 
 impl Vec1<u8> {
@@ -641,59 +446,6 @@ where
     }
 }
 
-macro_rules! impl_wrapper {
-    (pub $T:ident>
-        $(fn $name:ident(&$($m:ident)* $(, $param:ident: $tp:ty)*) -> $rt:ty);*) => (
-            impl<$T> Vec1<$T> {$(
-                #[inline]
-                pub fn $name(self: impl_wrapper!{__PRIV_SELF &$($m)*} $(, $param: $tp)*) -> $rt {
-                    (self.0).$name($($param),*)
-                }
-            )*}
-    );
-    (__PRIV_SELF &mut self) => (&mut Self);
-    (__PRIV_SELF &self) => (&Self);
-}
-
-// methods in Vec not in &[] which can be directly exposed
-impl_wrapper! {
-    pub T>
-        fn reserve(&mut self, additional: usize) -> ();
-        fn reserve_exact(&mut self, additional: usize) -> ();
-        fn shrink_to_fit(&mut self) -> ();
-        fn as_mut_slice(&mut self) -> &mut [T];
-        fn push(&mut self, value: T) -> ();
-        fn append(&mut self, other: &mut Vec<T>) -> ();
-        fn insert(&mut self, idx: usize, val: T) -> ();
-        fn len(&self) -> usize;
-        fn capacity(&self) -> usize;
-        fn as_slice(&self) -> &[T]
-}
-
-impl<T> Vec1<T>
-where
-    T: Clone,
-{
-    /// Calls `resize` on the underlying `Vec` if `new_len` >= 1.
-    ///
-    /// # Errors
-    ///
-    /// If the `new_len` is 0 an error is returned as
-    /// the length >= 1 constraint must be uphold.
-    pub fn try_resize(&mut self, new_len: usize, value: T) -> Vec1Result<()> {
-        if new_len >= 1 {
-            self.0.resize(new_len, value);
-            Ok(())
-        } else {
-            Err(Size0Error)
-        }
-    }
-
-    pub fn extend_from_slice(&mut self, other: &[T]) {
-        self.0.extend_from_slice(other)
-    }
-}
-
 impl<T> Vec1<T>
 where
     T: PartialEq<T>,
@@ -703,99 +455,12 @@ where
     }
 }
 
-impl<T> Vec1<T>
-where
-    T: PartialEq<T>,
-{
-    pub fn dedup(&mut self) {
-        self.0.dedup()
-    }
-}
-
-impl<T> Default for Vec1<T>
-where
-    T: Default,
-{
-    fn default() -> Self {
-        Vec1::new(Default::default())
-    }
-}
-
-impl<T> Deref for Vec1<T> {
-    type Target = [T];
-
-    fn deref(&self) -> &Self::Target {
-        &self.0
-    }
-}
-
-impl<T> DerefMut for Vec1<T> {
-    fn deref_mut(&mut self) -> &mut Self::Target {
-        &mut self.0
-    }
-}
-
-impl<T> Into<Vec<T>> for Vec1<T> {
-    fn into(self) -> Vec<T> {
-        self.0
-    }
-}
-
 impl<A, B> PartialEq<Vec1<B>> for Vec1<A>
 where
     A: PartialEq<B>,
 {
     fn eq(&self, other: &Vec1<B>) -> bool {
         self.0.eq(&other.0)
-    }
-}
-
-impl<A, B> PartialEq<B> for Vec1<A>
-where
-    Vec<A>: PartialEq<B>,
-{
-    fn eq(&self, other: &B) -> bool {
-        self.0.eq(other)
-    }
-}
-
-impl<T, O, R> Index<R> for Vec1<T>
-where
-    Vec<T>: Index<R, Output = O>,
-    O: ?Sized,
-{
-    type Output = O;
-
-    fn index(&self, index: R) -> &O {
-        self.0.index(index)
-    }
-}
-
-impl<T, O, R> IndexMut<R> for Vec1<T>
-where
-    Vec<T>: IndexMut<R, Output = O>,
-    O: ?Sized,
-{
-    fn index_mut(&mut self, index: R) -> &mut Self::Output {
-        self.0.index_mut(index)
-    }
-}
-
-impl<T> Borrow<[T]> for Vec1<T> {
-    fn borrow(&self) -> &[T] {
-        self
-    }
-}
-
-impl<T> BorrowMut<[T]> for Vec1<T> {
-    fn borrow_mut(&mut self) -> &mut [T] {
-        self
-    }
-}
-
-impl<T> Borrow<Vec<T>> for Vec1<T> {
-    fn borrow(&self) -> &Vec<T> {
-        &self.0
     }
 }
 
@@ -811,77 +476,6 @@ where
     }
 }
 
-impl<T> Extend<T> for Vec1<T> {
-    fn extend<I>(&mut self, iter: I)
-    where
-        I: IntoIterator<Item = T>,
-    {
-        self.0.extend(iter)
-    }
-}
-
-impl<T> AsRef<[T]> for Vec1<T> {
-    fn as_ref(&self) -> &[T] {
-        self
-    }
-}
-
-impl<T> AsMut<[T]> for Vec1<T> {
-    fn as_mut(&mut self) -> &mut [T] {
-        self
-    }
-}
-
-impl<T> AsRef<Vec<T>> for Vec1<T> {
-    fn as_ref(&self) -> &Vec<T> {
-        &self.0
-    }
-}
-impl<T> AsRef<Vec1<T>> for Vec1<T> {
-    fn as_ref(&self) -> &Vec1<T> {
-        self
-    }
-}
-
-impl<T> AsMut<Vec1<T>> for Vec1<T> {
-    fn as_mut(&mut self) -> &mut Vec1<T> {
-        self
-    }
-}
-
-impl<'a, T> IntoIterator for &'a Vec1<T> {
-    type Item = &'a T;
-    type IntoIter = slice::Iter<'a, T>;
-    fn into_iter(self) -> Self::IntoIter {
-        self.0.iter()
-    }
-}
-impl<'a, T> IntoIterator for &'a mut Vec1<T> {
-    type Item = &'a mut T;
-    type IntoIter = slice::IterMut<'a, T>;
-    fn into_iter(self) -> Self::IntoIter {
-        self.0.iter_mut()
-    }
-}
-
-#[cfg(feature = "serde")]
-impl<'de, T> ::serde::Deserialize<'de> for Vec1<T>
-where
-    T: ::serde::Deserialize<'de>,
-{
-    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
-    where
-        D: ::serde::Deserializer<'de>,
-    {
-        use ::serde::de::Error;
-
-        let v = Vec::deserialize(deserializer)?;
-        let v1 = Vec1::try_from_vec(v).map_err(|e| D::Error::custom(e))?;
-
-        Ok(v1)
-    }
-}
-
 impl<T> Into<Rc<[T]>> for Vec1<T> {
     fn into(self) -> Rc<[T]> {
         self.0.into()
@@ -894,11 +488,9 @@ impl<T> Into<Arc<[T]>> for Vec1<T> {
     }
 }
 
-impl<T> std::convert::TryFrom<Vec<T>> for Vec1<T> {
-    type Error = Size0Error;
-
-    fn try_from(vec: Vec<T>) -> StdResult<Self, Self::Error> {
-        Vec1::try_from_vec(vec)
+impl<I> Into<Box<[I]>> for Vec1<I> {
+    fn into(self) -> Box<[I]> {
+        self.0.into()
     }
 }
 
@@ -928,16 +520,12 @@ macro_rules! wrapper_from_to_try_from {
     );
 }
 
-wrapper_from_to_try_from!(impl Into + impl[T] TryFrom<Box<[T]>> for Vec1<T>);
 wrapper_from_to_try_from!(impl[T] TryFrom<BinaryHeap<T>> for Vec1<T>);
 wrapper_from_to_try_from!(impl[] TryFrom<String> for Vec1<u8>);
 wrapper_from_to_try_from!(impl['a] TryFrom<&'a str> for Vec1<u8>);
-wrapper_from_to_try_from!(impl['a, T] TryFrom<&'a [T]> for Vec1<T> where T: Clone);
 wrapper_from_to_try_from!(impl['a, T] TryFrom<&'a mut [T]> for Vec1<T> where T: Clone);
 wrapper_from_to_try_from!(impl Into + impl[T] TryFrom<VecDeque<T>> for Vec1<T>);
 
-/// **Warning: This impl is unstable and requires nightly,
-///   it's not covert by semver stability guarantees.**
 impl TryFrom<CString> for Vec1<u8> {
     type Error = Size0Error;
 
@@ -1161,12 +749,12 @@ mod test {
         }
 
         #[test]
-        fn impl_as_ref() {
+        fn impl_as_ref_slice() {
             fn chk<E, T: AsRef<[E]>>() {};
             chk::<u8, Vec1<u8>>();
         }
         #[test]
-        fn impl_as_mut_slice_self() {
+        fn impl_as_mut_self() {
             fn chk<E, T: AsMut<Vec1<E>>>() {};
             chk::<u8, Vec1<u8>>();
         }
@@ -1255,7 +843,7 @@ mod test {
 
             #[test]
             fn empty() {
-                let result: Result<Vec1<u8>, _> = serde_json::from_str("[]");
+                let result: std::result::Result<Vec1<u8>, _> = serde_json::from_str("[]");
                 assert!(result.is_err());
             }
 

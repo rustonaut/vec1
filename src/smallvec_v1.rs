@@ -18,19 +18,19 @@
 //! assert_eq!(&*v, &*vec![1u8,2]);
 //! ```
 
-use std::{
-    fmt::{self, Debug},
-    ops::{Deref, DerefMut, Index, IndexMut},
-    cmp::{Ord, Ordering, PartialEq, Eq},
-    hash::{Hash, Hasher},
-    convert::{TryFrom, TryInto},
-    borrow::{Borrow, BorrowMut},
-    slice::SliceIndex
-};
 use super::Size0Error;
+use std::{
+    borrow::{Borrow, BorrowMut},
+    cmp::{Eq, Ord, Ordering, PartialEq},
+    convert::{TryFrom, TryInto},
+    fmt::{self, Debug},
+    hash::{Hash, Hasher},
+    ops::{Deref, DerefMut, Index, IndexMut},
+    slice::SliceIndex,
+};
 
-use smallvec_v1_ as smallvec;
 use smallvec::*;
+use smallvec_v1_ as smallvec;
 
 pub use crate::__smallvec1_macro_v1 as smallvec1;
 
@@ -82,10 +82,8 @@ shared_impl! {
 
 impl<A> SmallVec1<A>
 where
-    A: Array
+    A: Array,
 {
-
-
     /// Tries to create a new instance from a instance of the wrapped type.
     ///
     /// # Errors
@@ -151,15 +149,54 @@ where
         self.0.into_boxed_slice()
     }
 
-     /// See [`SmallVec::insert_many()`].
-     pub fn insert_many<I: IntoIterator<Item = A::Item>>(
-        &mut self,
-        index: usize,
-        iterable: I
-    ) {
+    /// See [`SmallVec::insert_many()`].
+    pub fn insert_many<I: IntoIterator<Item = A::Item>>(&mut self, index: usize, iterable: I) {
         self.0.insert_many(index, iterable)
     }
+}
 
+impl<A> SmallVec1<A>
+where
+    A: Array,
+    A::Item: Copy,
+{
+    pub fn try_from_slice(slice: &[A::Item]) -> Result<Self> {
+        if slice.is_empty() {
+            Err(Size0Error)
+        } else {
+            Ok(Self(SmallVec::from_slice(slice)))
+        }
+    }
+
+    pub fn insert_from_slice(&mut self, index: usize, slice: &[A::Item]) {
+        self.0.insert_from_slice(index, slice)
+    }
+}
+
+impl<A> SmallVec1<A>
+where
+    A: Array,
+    A::Item: Clone,
+{
+    pub fn try_from_elem(element: A::Item, len: usize) -> Result<Self> {
+        if len == 0 {
+            Err(Size0Error)
+        } else {
+            Ok(Self(SmallVec::from_elem(element, len)))
+        }
+    }
+}
+
+impl_wrapper! {
+    base_bounds_macro = A: Array,
+    impl<A> SmallVec1<A> {
+        fn inline_size(&self) -> usize;
+        fn spilled(&self) -> bool;
+        fn grow(&mut self, len: usize) -> ();
+        fn try_reserve(&mut self, additional: usize) -> std::result::Result<(), CollectionAllocErr>;
+        fn try_reserve_exact(&mut self, additional: usize) -> std::result::Result<(), CollectionAllocErr>;
+        fn try_grow(&mut self, len: usize) -> std::result::Result<(), CollectionAllocErr>
+    }
 }
 
 impl<A, B> PartialEq<SmallVec1<B>> for SmallVec1<A>
@@ -195,61 +232,95 @@ macro_rules! impl_try_from_into_buf_trait {
 //FIXME support const_generics feature
 impl_try_from_into_buf_trait!(
     // values from smallvec crate
-    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16,
-    17, 18, 19, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31,
-    32, 36, 0x40, 0x60, 0x80, 0x100, 0x200, 0x400, 0x600, 0x800,
-    0x1000, 0x2000, 0x4000, 0x6000, 0x8000, 0x10_000, 0x20_000,
-    0x40_000, 0x60_000, 0x80_000, 0x100_000
+    0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23, 24, 25,
+    26, 27, 28, 29, 30, 31, 32, 36, 0x40, 0x60, 0x80, 0x100, 0x200, 0x400, 0x600, 0x800, 0x1000,
+    0x2000, 0x4000, 0x6000, 0x8000, 0x10_000, 0x20_000, 0x40_000, 0x60_000, 0x80_000, 0x100_000
 );
 
+impl<A> IntoIterator for SmallVec1<A>
+where
+    A: Array,
+{
+    type Item = A::Item;
+    type IntoIter = smallvec::IntoIter<A>;
 
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
+    }
+}
 
+impl<A> From<SmallVec1<A>> for Vec<A::Item>
+where
+    A: Array,
+{
+    fn from(vec: SmallVec1<A>) -> Vec<A::Item> {
+        vec.into_vec()
+    }
+}
 
+impl<A> TryFrom<Vec<A::Item>> for SmallVec1<A>
+where
+    A: Array,
+{
+    type Error = Size0Error;
+    fn try_from(vec: Vec<A::Item>) -> Result<Self> {
+        Self::try_from_vec(vec)
+    }
+}
+
+impl<A> Into<Box<[A::Item]>> for SmallVec1<A>
+where
+    A: Array,
+{
+    fn into(self) -> Box<[A::Item]> {
+        self.into_boxed_slice()
+    }
+}
 
 #[cfg(test)]
 mod tests {
 
     mod SmallVec1 {
         #![allow(non_snake_case)]
-        use std::collections::hash_map::DefaultHasher;
         use super::super::*;
+        use std::collections::hash_map::DefaultHasher;
 
         #[test]
         fn Clone() {
-            let a: SmallVec1<[u8; 4]> = smallvec1![1,2,3];
+            let a: SmallVec1<[u8; 4]> = smallvec1![1, 2, 3];
             let b = a.clone();
-            assert_eq!(a,b);
+            assert_eq!(a, b);
         }
 
         #[test]
         fn Eq() {
-            let a: SmallVec1<[u8; 4]>  = smallvec1![1,2,3];
-            let b: SmallVec1<[u8; 4]>  = smallvec1![1,2,3];
-            let c: SmallVec1<[u8; 4]>  = smallvec1![2,2,3];
+            let a: SmallVec1<[u8; 4]> = smallvec1![1, 2, 3];
+            let b: SmallVec1<[u8; 4]> = smallvec1![1, 2, 3];
+            let c: SmallVec1<[u8; 4]> = smallvec1![2, 2, 3];
 
-            assert_eq!(a,b);
-            assert_ne!(a,c);
+            assert_eq!(a, b);
+            assert_ne!(a, c);
             //make sure Eq is supported and not only PartialEq
-            fn cmp<A: Eq>(){}
+            fn cmp<A: Eq>() {}
             cmp::<SmallVec1<[u8; 4]>>();
         }
 
         #[test]
         fn PartialEq() {
-            let a: SmallVec1<[String; 4]>  = smallvec1!["hy".to_owned()];
-            let b: SmallVec1<[&'static str; 4]>  = smallvec1!["hy"];
-            assert_eq!(a,b);
+            let a: SmallVec1<[String; 4]> = smallvec1!["hy".to_owned()];
+            let b: SmallVec1<[&'static str; 4]> = smallvec1!["hy"];
+            assert_eq!(a, b);
 
-            let a: SmallVec1<[u8; 4]> = smallvec1![1,2,3,4,5];
-            let b: SmallVec1<[u8; 8]> = smallvec1![1,2,3,4,5];
-            assert_eq!(a,b);
+            let a: SmallVec1<[u8; 4]> = smallvec1![1, 2, 3, 4, 5];
+            let b: SmallVec1<[u8; 8]> = smallvec1![1, 2, 3, 4, 5];
+            assert_eq!(a, b);
         }
 
         #[test]
         fn Ord() {
             let a: SmallVec1<[u8; 4]> = smallvec1![1, 2];
             let b: SmallVec1<[u8; 4]> = smallvec1![1, 3];
-            assert_eq!(Ord::cmp(&a,&b), Ordering::Less);
+            assert_eq!(Ord::cmp(&a, &b), Ordering::Less);
         }
 
         #[test]
@@ -347,7 +418,7 @@ mod tests {
         #[test]
         fn Extend() {
             let mut a: SmallVec1<[u8; 4]> = smallvec1![12, 23];
-            a.extend(vec![1u8,2,3].into_iter());
+            a.extend(vec![1u8, 2, 3].into_iter());
             assert_eq!(a.as_slice(), &[12u8, 23, 1, 2, 3] as &[u8]);
         }
 
@@ -369,7 +440,8 @@ mod tests {
 
             #[test]
             fn slice() {
-                let a = SmallVec1::<[String; 4]>::try_from(&["hy".to_owned()] as &[String]).unwrap();
+                let a =
+                    SmallVec1::<[String; 4]>::try_from(&["hy".to_owned()] as &[String]).unwrap();
                 assert_eq!(a[0], "hy");
 
                 SmallVec1::<[String; 4]>::try_from(&[] as &[String]).unwrap_err();
@@ -377,16 +449,14 @@ mod tests {
 
             #[test]
             fn misc() {
-                let _ = SmallVec1::<[u8; 4]>::try_from(vec![1,2,3]).unwrap();
+                let _ = SmallVec1::<[u8; 4]>::try_from(vec![1, 2, 3]).unwrap();
                 let _ = SmallVec1::<[u8; 4]>::try_from(vec![]).unwrap_err();
-                let _ = SmallVec1::<[u8; 4]>::try_from(smallvec![1,2,3]).unwrap();
+                let _ = SmallVec1::<[u8; 4]>::try_from(smallvec![1, 2, 3]).unwrap();
                 let _ = SmallVec1::<[u8; 4]>::try_from(smallvec![]).unwrap_err();
-                let _ = SmallVec1::<[u8; 4]>::try_from([1u8,2,3,4]).unwrap();
+                let _ = SmallVec1::<[u8; 4]>::try_from([1u8, 2, 3, 4]).unwrap();
                 let _ = SmallVec1::<[u8; 0]>::try_from([] as [u8; 0]).unwrap_err();
             }
         }
-
-
 
         #[test]
         fn new() {
@@ -397,19 +467,19 @@ mod tests {
 
         #[test]
         fn with_capacity() {
-            let a = SmallVec1::<[u8;4]>::with_capacity(32, 21);
+            let a = SmallVec1::<[u8; 4]>::with_capacity(32, 21);
             assert_eq!(a.is_empty(), false);
             assert_eq!(a.capacity(), 21);
 
-            let a = SmallVec1::<[u8;4]>::with_capacity(32, 1);
+            let a = SmallVec1::<[u8; 4]>::with_capacity(32, 1);
             assert_eq!(a.is_empty(), false);
-            assert_eq!(a.capacity(), 4/*yes 4!*/);
+            assert_eq!(a.capacity(), 4 /*yes 4!*/);
         }
 
         #[test]
         fn try_from_vec() {
-            let a = SmallVec1::<[u8; 4]>::try_from_vec(vec![1,2,3]);
-            assert_eq!(a, Ok(smallvec1![1,2,3]));
+            let a = SmallVec1::<[u8; 4]>::try_from_vec(vec![1, 2, 3]);
+            assert_eq!(a, Ok(smallvec1![1, 2, 3]));
 
             let b = SmallVec1::<[u8; 4]>::try_from_vec(vec![]);
             assert_eq!(b, Err(Size0Error));
@@ -417,8 +487,8 @@ mod tests {
 
         #[test]
         fn try_from_smallvec() {
-            let a = SmallVec1::<[u8; 4]>::try_from_smallvec(smallvec![32,2,3]);
-            assert_eq!(a, Ok(smallvec1![32,2,3]));
+            let a = SmallVec1::<[u8; 4]>::try_from_smallvec(smallvec![32, 2, 3]);
+            assert_eq!(a, Ok(smallvec1![32, 2, 3]));
 
             let a = SmallVec1::<[u8; 4]>::try_from_smallvec(smallvec![]);
             assert_eq!(a, Err(Size0Error));
@@ -427,7 +497,7 @@ mod tests {
         #[test]
         fn try_from_buf() {
             let a = SmallVec1::try_from_buf([1u8, 2, 3, 4]);
-            assert_eq!(a, Ok(smallvec1![1,2,3,4]));
+            assert_eq!(a, Ok(smallvec1![1, 2, 3, 4]));
 
             let a = SmallVec1::try_from_buf([] as [u8; 0]);
             assert_eq!(a, Err(Size0Error));
@@ -436,7 +506,7 @@ mod tests {
         #[test]
         fn try_from_buf_and_len() {
             let a = SmallVec1::try_from_buf_and_len([1u8, 2, 3, 4, 0, 0, 0, 0], 4);
-            assert_eq!(a, Ok(smallvec1![1,2,3,4]));
+            assert_eq!(a, Ok(smallvec1![1, 2, 3, 4]));
 
             let a = SmallVec1::try_from_buf_and_len([1u8, 2, 3], 0);
             assert_eq!(a, Err(Size0Error));
@@ -450,29 +520,29 @@ mod tests {
 
         #[test]
         fn into_smallvec() {
-            let a: SmallVec1<[u8; 4]> = smallvec1![1,3,2];
+            let a: SmallVec1<[u8; 4]> = smallvec1![1, 3, 2];
             let a = a.into_smallvec();
-            let b: SmallVec<[u8; 4]> = smallvec![1,3,2];
+            let b: SmallVec<[u8; 4]> = smallvec![1, 3, 2];
             assert_eq!(a, b);
         }
 
         #[test]
         fn into_vec() {
-            let a: SmallVec1<[u8; 4]> = smallvec1![1,3,2];
+            let a: SmallVec1<[u8; 4]> = smallvec1![1, 3, 2];
             let a: Vec<u8> = a.into_vec();
-            assert_eq!(a, vec![1,3,2])
+            assert_eq!(a, vec![1, 3, 2])
         }
 
         #[test]
         fn into_inner() {
-            let a: SmallVec1<[u8; 4]> = smallvec1![1,3,2,4];
+            let a: SmallVec1<[u8; 4]> = smallvec1![1, 3, 2, 4];
             let a: [u8; 4] = a.into_inner().unwrap();
             assert_eq!(a, [1, 3, 2, 4])
         }
 
         #[test]
         fn into_boxed_slice() {
-            let a: SmallVec1<[u8; 4]> = smallvec1![1,3,2,4];
+            let a: SmallVec1<[u8; 4]> = smallvec1![1, 3, 2, 4];
             let a: Box<[u8]> = a.into_boxed_slice();
             assert_eq!(&*a, &[1u8, 3, 2, 4] as &[u8])
         }
@@ -482,21 +552,21 @@ mod tests {
 
             #[test]
             fn misc() {
-                let a: SmallVec1<[u8; 4]> = smallvec1![1,3,2,4];
+                let a: SmallVec1<[u8; 4]> = smallvec1![1, 3, 2, 4];
                 let _: Vec<u8> = a.into();
 
-                let a: SmallVec1<[u8; 4]> = smallvec1![1,3,2,4];
+                let a: SmallVec1<[u8; 4]> = smallvec1![1, 3, 2, 4];
                 let _: SmallVec<[u8; 4]> = a.into();
 
-                let a: SmallVec1<[u8; 4]> = smallvec1![1,3,2,4, 5];
+                let a: SmallVec1<[u8; 4]> = smallvec1![1, 3, 2, 4, 5];
                 let _: Box<[u8]> = a.into();
 
-                let a: SmallVec1<[u8; 4]> = smallvec1![1,3,2,4];
+                let a: SmallVec1<[u8; 4]> = smallvec1![1, 3, 2, 4];
                 let a: std::result::Result<[u8; 4], _> = a.try_into();
                 a.unwrap();
 
-                let a: SmallVec1<[u8; 4]> = smallvec1![1,3,2];
-                let a: std::result::Result<[u8; 4],_> = a.try_into();
+                let a: SmallVec1<[u8; 4]> = smallvec1![1, 3, 2];
+                let a: std::result::Result<[u8; 4], _> = a.try_into();
                 a.unwrap_err();
             }
         }
@@ -558,7 +628,7 @@ mod tests {
             let mut a: SmallVec1<[u8; 4]> = smallvec1![1, 3];
             a.push(12);
             let b: SmallVec1<[u8; 4]> = smallvec1![1, 3, 12];
-            assert_eq!(a,b);
+            assert_eq!(a, b);
         }
 
         #[test]
@@ -566,7 +636,7 @@ mod tests {
             let mut a: SmallVec1<[u8; 4]> = smallvec1![1, 3];
             a.insert(0, 12);
             let b: SmallVec1<[u8; 4]> = smallvec1![12, 1, 3];
-            assert_eq!(a,b);
+            assert_eq!(a, b);
         }
 
         #[test]
@@ -584,7 +654,7 @@ mod tests {
         #[test]
         fn as_slice() {
             let a: SmallVec1<[u8; 4]> = smallvec1![1, 3];
-            assert_eq!(a.as_slice(), &[1u8,3] as &[u8]);
+            assert_eq!(a.as_slice(), &[1u8, 3] as &[u8]);
         }
 
         #[test]
@@ -592,7 +662,7 @@ mod tests {
             let mut a: SmallVec1<[u8; 4]> = smallvec1![1, 3];
             a.as_mut_slice()[0] = 10;
             let b: SmallVec1<[u8; 4]> = smallvec1![10, 3];
-            assert_eq!(a,b);
+            assert_eq!(a, b);
         }
 
         #[test]
@@ -672,13 +742,13 @@ mod tests {
         #[test]
         fn dedup_by() {
             let mut a: SmallVec1<[u8; 4]> = smallvec1![1, 1, 4, 4];
-            a.dedup_by(|a,b| a==b);
+            a.dedup_by(|a, b| a == b);
             assert_eq!(a.as_slice(), &[1u8, 4] as &[u8]);
         }
 
         #[test]
         fn dedup_by_key() {
-            let mut a: SmallVec1<[(u8,u8); 4]> = smallvec1![ (1, 2), (1, 5), (4, 4), (5, 4) ];
+            let mut a: SmallVec1<[(u8, u8); 4]> = smallvec1![(1, 2), (1, 5), (4, 4), (5, 4)];
             a.dedup_by_key(|a| a.0);
             assert_eq!(a.as_slice(), &[(1u8, 2u8), (4, 4), (5, 4)] as &[(u8, u8)]);
         }
@@ -745,7 +815,6 @@ mod tests {
             SmallVec1::<[u8; 4]>::try_from_elem(1u8, 0).unwrap_err();
         }
 
-
         #[test]
         fn split_off_first() {
             let a: SmallVec1<[u8; 4]> = smallvec1![32];
@@ -766,13 +835,13 @@ mod tests {
             assert_eq!((exp, 43), a.split_off_last());
         }
 
-        #[cfg(feature="serde")]
+        #[cfg(feature = "serde")]
         mod serde {
             use super::super::super::*;
 
             #[test]
             fn can_be_serialized_and_deserialized() {
-                let a: SmallVec1<[u8; 4]> = smallvec1![32,12,14,18,201];
+                let a: SmallVec1<[u8; 4]> = smallvec1![32, 12, 14, 18, 201];
                 let json_str = serde_json::to_string(&a).unwrap();
                 let b: SmallVec1<[u8; 4]> = serde_json::from_str(&json_str).unwrap();
                 assert_eq!(a, b);
@@ -780,7 +849,7 @@ mod tests {
 
             #[test]
             fn array_size_is_not_serialized() {
-                let a: SmallVec1<[u8; 4]> = smallvec1![32,12,14,18,201];
+                let a: SmallVec1<[u8; 4]> = smallvec1![32, 12, 14, 18, 201];
                 let json_str = serde_json::to_string(&a).unwrap();
                 let b: SmallVec1<[u8; 8]> = serde_json::from_str(&json_str).unwrap();
                 assert_eq!(a, b);
@@ -790,7 +859,7 @@ mod tests {
             fn does_not_allow_empty_deserialization() {
                 let a = Vec::<u8>::new();
                 let json_str = serde_json::to_string(&a).unwrap();
-                serde_json::from_str::<SmallVec1<[u8;8]>>(&json_str).unwrap_err();
+                serde_json::from_str::<SmallVec1<[u8; 8]>>(&json_str).unwrap_err();
             }
         }
     }
