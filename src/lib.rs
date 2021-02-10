@@ -46,19 +46,12 @@ pub extern crate smallvec_v1_;
 pub mod smallvec_v1;
 
 use std::{
-    borrow::{Borrow, BorrowMut},
-    cmp::{Eq, Ord, Ordering, PartialEq},
-    convert::TryFrom,
-    fmt::{self, Debug},
-    hash::{Hash, Hasher},
-    ops::{Deref, DerefMut, Index, IndexMut},
-    slice::SliceIndex,
-};
-use std::{
     collections::BinaryHeap,
     collections::VecDeque,
+    convert::TryFrom,
     error::Error as StdError,
     ffi::CString,
+    fmt,
     iter::{DoubleEndedIterator, ExactSizeIterator, Extend, IntoIterator, Peekable},
     ops::{Bound, RangeBounds},
     rc::Rc,
@@ -66,6 +59,18 @@ use std::{
     sync::Arc,
     vec,
 };
+
+/// Error returned by operations which would cause `Vec1` to have a length of 0.
+#[derive(Debug, Hash, Eq, PartialEq, Copy, Clone)]
+pub struct Size0Error;
+
+impl fmt::Display for Size0Error {
+    fn fmt(&self, fter: &mut fmt::Formatter) -> fmt::Result {
+        #[allow(deprecated)]
+        write!(fter, "Cannot produce a Vec1 with a length of zero.")
+    }
+}
+impl StdError for Size0Error {}
 
 /// A macro similar to `vec!` to create a `Vec1`.
 ///
@@ -87,21 +92,6 @@ macro_rules! vec1 {
         tmp
     });
 }
-
-/// Error returned by operations which would cause `Vec1` to have a length of 0.
-#[derive(Debug, Hash, Eq, PartialEq, Copy, Clone)]
-pub struct Size0Error;
-
-impl fmt::Display for Size0Error {
-    fn fmt(&self, fter: &mut fmt::Formatter) -> fmt::Result {
-        #[allow(deprecated)]
-        write!(fter, "Cannot produce a Vec1 with a length of zero.")
-    }
-}
-impl StdError for Size0Error {}
-
-type Result<T> = std::result::Result<T, Size0Error>;
-type Vec1Result<T> = StdResult<T, Size0Error>;
 
 shared_impl! {
     base_bounds_macro = ,
@@ -259,9 +249,9 @@ impl<T> Vec1<T> {
     /// assert_eq!(data, Err("failed"));
     /// # }
     /// ```
-    pub fn try_mapped<F, N, E>(self, map_fn: F) -> std::result::Result<Vec1<N>, E>
+    pub fn try_mapped<F, N, E>(self, map_fn: F) -> Result<Vec1<N>, E>
     where
-        F: FnMut(T) -> std::result::Result<N, E>,
+        F: FnMut(T) -> Result<N, E>,
     {
         let mut map_fn = map_fn;
         // ::collect<Result<Vec<_>>>() is uses the iterators size hint's lower bound
@@ -284,9 +274,9 @@ impl<T> Vec1<T> {
     /// Once any call to `map_fn` returns a error that error is directly
     /// returned by this method.
     ///
-    pub fn try_mapped_ref<F, N, E>(&self, map_fn: F) -> std::result::Result<Vec1<N>, E>
+    pub fn try_mapped_ref<F, N, E>(&self, map_fn: F) -> Result<Vec1<N>, E>
     where
-        F: FnMut(&T) -> std::result::Result<N, E>,
+        F: FnMut(&T) -> Result<N, E>,
     {
         let mut map_fn = map_fn;
         let mut out = Vec::with_capacity(self.len());
@@ -307,9 +297,9 @@ impl<T> Vec1<T> {
     /// Once any call to `map_fn` returns a error that error is directly
     /// returned by this method.
     ///
-    pub fn try_mapped_mut<F, N, E>(&mut self, map_fn: F) -> std::result::Result<Vec1<N>, E>
+    pub fn try_mapped_mut<F, N, E>(&mut self, map_fn: F) -> Result<Vec1<N>, E>
     where
-        F: FnMut(&mut T) -> std::result::Result<N, E>,
+        F: FnMut(&mut T) -> Result<N, E>,
     {
         let mut map_fn = map_fn;
         let mut out = Vec::with_capacity(self.len());
@@ -325,7 +315,7 @@ impl<T> Vec1<T> {
     ///
     /// If after the split any part would be empty an error is returned as the
     /// length >= 1 constraint must be uphold.
-    pub fn try_split_off(&mut self, at: usize) -> Vec1Result<Vec1<T>> {
+    pub fn try_split_off(&mut self, at: usize) -> Result<Vec1<T>, Size0Error> {
         if at == 0 || at >= self.len() {
             Err(Size0Error)
         } else {
@@ -347,7 +337,7 @@ impl<T> Vec1<T> {
         &mut self,
         range: R,
         replace_with: I,
-    ) -> Vec1Result<Splice<<I as IntoIterator>::IntoIter>>
+    ) -> Result<Splice<<I as IntoIterator>::IntoIter>, Size0Error>
     where
         I: IntoIterator<Item = T>,
         R: RangeBounds<usize>,
@@ -410,10 +400,10 @@ pub struct Splice<'a, I: Iterator + 'a> {
     vec_splice: vec::Splice<'a, Peekable<I>>,
 }
 
-impl<'a, I> Debug for Splice<'a, I>
+impl<'a, I> fmt::Debug for Splice<'a, I>
 where
     I: Iterator + 'a,
-    vec::Splice<'a, Peekable<I>>: Debug,
+    vec::Splice<'a, Peekable<I>>: fmt::Debug,
 {
     fn fmt(&self, fter: &mut fmt::Formatter) -> fmt::Result {
         fter.debug_tuple("Splice").field(&self.vec_splice).finish()
@@ -607,6 +597,8 @@ mod test {
     mod Vec1 {
         #![allow(non_snake_case)]
         use super::super::*;
+
+        use std::borrow::BorrowMut;
 
         #[test]
         fn deref_slice() {
@@ -843,7 +835,7 @@ mod test {
 
             #[test]
             fn empty() {
-                let result: std::result::Result<Vec1<u8>, _> = serde_json::from_str("[]");
+                let result: Result<Vec1<u8>, _> = serde_json::from_str("[]");
                 assert!(result.is_err());
             }
 

@@ -32,6 +32,15 @@ macro_rules! shared_impl {
             $($tb : $trait,)?;
 
         const _: () = {
+            use std::{
+                borrow::{Borrow, BorrowMut},
+                cmp::{Eq, Ord, Ordering, PartialEq},
+                convert::TryFrom,
+                fmt::{self, Debug},
+                hash::{Hash, Hasher},
+                ops::{Deref, DerefMut, Index, IndexMut},
+                slice::SliceIndex,
+            };
 
             impl<$t> $name<$t>
             where
@@ -61,7 +70,7 @@ macro_rules! shared_impl {
                 /// it's empty_. But this is normally fine as it only
                 /// happens if the `Vec<T>` is empty.
                 ///
-                pub fn try_from_vec(vec: Vec<$item_ty>) -> Result<Self> {
+                pub fn try_from_vec(vec: Vec<$item_ty>) -> Result<Self, Size0Error> {
                     if vec.is_empty() {
                         Err(Size0Error)
                     } else {
@@ -109,7 +118,7 @@ macro_rules! shared_impl {
                 /// If len is 0 an error is returned as the
                 /// length >= 1 constraint must be uphold.
                 ///
-                pub fn try_truncate(&mut self, len: usize) -> Result<()> {
+                pub fn try_truncate(&mut self, len: usize) -> Result<(), Size0Error> {
                     if len > 0 {
                         self.0.truncate(len);
                         Ok(())
@@ -124,7 +133,7 @@ macro_rules! shared_impl {
                 ///
                 /// If len is 1 an error is returned as the
                 /// length >= 1 constraint must be uphold.
-                pub fn try_swap_remove(&mut self, index: usize) -> Result<$item_ty> {
+                pub fn try_swap_remove(&mut self, index: usize) -> Result<$item_ty, Size0Error> {
                     if self.len() > 1 {
                         Ok(self.0.swap_remove(index))
                     } else {
@@ -138,7 +147,7 @@ macro_rules! shared_impl {
                 ///
                 /// If len is 1 an error is returned as the
                 /// length >= 1 constraint must be uphold.
-                pub fn try_remove(&mut self, index: usize) -> Result<$item_ty> {
+                pub fn try_remove(&mut self, index: usize) -> Result<$item_ty, Size0Error> {
                     if self.len() > 1 {
                         Ok(self.0.remove(index))
                     } else {
@@ -180,7 +189,7 @@ macro_rules! shared_impl {
                 ///
                 /// If len is 1 an error is returned as the
                 /// length >= 1 constraint must be uphold.
-                pub fn try_pop(&mut self) -> Result<$item_ty> {
+                pub fn try_pop(&mut self) -> Result<$item_ty, Size0Error> {
                     if self.len() > 1 {
                         //UNWRAP_SAFE: pop on len > 1 can not be none
                         Ok(self.0.pop().unwrap())
@@ -191,7 +200,7 @@ macro_rules! shared_impl {
 
 
                 /// See [`$wrapped::resize_with()`] but fails if it would resize to length 0.
-                pub fn try_resize_with<F>(&mut self, new_len: usize, f: F) -> Result<()>
+                pub fn try_resize_with<F>(&mut self, new_len: usize, f: F) -> Result<(), Size0Error>
                 where
                     F: FnMut() -> $item_ty
                 {
@@ -263,7 +272,7 @@ macro_rules! shared_impl {
                 $item_ty: Clone,
                 $($tb : $trait,)?
             {
-                pub fn try_resize(&mut self, len: usize, value: $item_ty) -> Result<()> {
+                pub fn try_resize(&mut self, len: usize, value: $item_ty) -> Result<(), Size0Error> {
                     if len == 0 {
                         Err(Size0Error)
                     } else {
@@ -288,7 +297,7 @@ macro_rules! shared_impl {
                 $($tb : $trait,)?
             {
                 type Error = Size0Error;
-                fn try_from(vec: $wrapped<$t>) -> Result<Self> {
+                fn try_from(vec: $wrapped<$t>) -> Result<Self, Size0Error> {
                     if vec.is_empty() {
                         Err(Size0Error)
                     } else {
@@ -304,7 +313,7 @@ macro_rules! shared_impl {
                 $($tb : $trait,)?
             {
                 type Error = Size0Error;
-                fn try_from(slice: &'_ [$item_ty]) -> Result<Self> {
+                fn try_from(slice: &'_ [$item_ty]) -> Result<Self, Size0Error> {
                     if slice.is_empty() {
                         Err(Size0Error)
                     } else {
@@ -318,7 +327,7 @@ macro_rules! shared_impl {
                 $($tb : $trait,)?
             {
                 type Error = Size0Error;
-                fn try_from(slice: Box<[$item_ty]>) -> Result<Self> {
+                fn try_from(slice: Box<[$item_ty]>) -> Result<Self, Size0Error> {
                     if slice.is_empty() {
                         Err(Size0Error)
                     } else {
@@ -565,7 +574,7 @@ macro_rules! shared_impl {
             //      dependency smallvec/serde, but we can mirror the serde implementation.
             #[cfg(feature = "serde")]
             const _: () = {
-                use std::{marker::PhantomData, result::Result};
+                use std::marker::PhantomData;
                 use serde::{
                     de::{SeqAccess,Deserialize, Visitor, Deserializer, Error as _},
                     ser::{Serialize, Serializer, SerializeSeq}

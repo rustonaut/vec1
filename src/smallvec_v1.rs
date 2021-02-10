@@ -18,23 +18,14 @@
 //! assert_eq!(&*v, &*vec![1u8,2]);
 //! ```
 
-use super::Size0Error;
-use std::{
-    borrow::{Borrow, BorrowMut},
-    cmp::{Eq, Ord, Ordering, PartialEq},
-    convert::{TryFrom, TryInto},
-    fmt::{self, Debug},
-    hash::{Hash, Hasher},
-    ops::{Deref, DerefMut, Index, IndexMut},
-    slice::SliceIndex,
-};
+use crate::Size0Error;
+
+use std::convert::{TryFrom, TryInto};
 
 use smallvec::*;
 use smallvec_v1_ as smallvec;
 
 pub use crate::__smallvec1_macro_v1 as smallvec1;
-
-type Result<T> = std::result::Result<T, Size0Error>;
 
 #[doc(hidden)]
 #[macro_export]
@@ -94,7 +85,7 @@ where
     /// it's empty_. But this is normally fine as it only
     /// happens if the `Vec<T>` is empty.
     ///
-    pub fn try_from_smallvec(wrapped: SmallVec<A>) -> Result<Self> {
+    pub fn try_from_smallvec(wrapped: SmallVec<A>) -> Result<Self, Size0Error> {
         if wrapped.is_empty() {
             Err(Size0Error)
         } else {
@@ -103,7 +94,7 @@ where
     }
 
     /// See [`SmallVec::from_buf()`] but fails if the `buf` is empty.
-    pub fn try_from_buf(buf: A) -> Result<Self> {
+    pub fn try_from_buf(buf: A) -> Result<Self, Size0Error> {
         Self::try_from_smallvec(SmallVec::from_buf(buf))
     }
 
@@ -114,7 +105,7 @@ where
     /// Like [`SmallVec::from_buf_and_len()`] this fails if the length is > the
     /// size of the buffer. I.e. `$name::try_from_buf_and_len([] as [u8;0],2)` will
     /// panic.
-    pub fn try_from_buf_and_len(buf: A, len: usize) -> Result<Self> {
+    pub fn try_from_buf_and_len(buf: A, len: usize) -> Result<Self, Size0Error> {
         Self::try_from_smallvec(SmallVec::from_buf_and_len(buf, len))
     }
 
@@ -140,7 +131,7 @@ where
     ///
     /// This matches [`SmallVec::into_inner()`] in that if the
     //  length is to large or small self is returned as error.
-    pub fn into_inner(self) -> std::result::Result<A, Self> {
+    pub fn into_inner(self) -> Result<A, Self> {
         self.0.into_inner().map_err(SmallVec1)
     }
 
@@ -160,7 +151,7 @@ where
     A: Array,
     A::Item: Copy,
 {
-    pub fn try_from_slice(slice: &[A::Item]) -> Result<Self> {
+    pub fn try_from_slice(slice: &[A::Item]) -> Result<Self, Size0Error> {
         if slice.is_empty() {
             Err(Size0Error)
         } else {
@@ -178,7 +169,7 @@ where
     A: Array,
     A::Item: Clone,
 {
-    pub fn try_from_elem(element: A::Item, len: usize) -> Result<Self> {
+    pub fn try_from_elem(element: A::Item, len: usize) -> Result<Self, Size0Error> {
         if len == 0 {
             Err(Size0Error)
         } else {
@@ -193,9 +184,9 @@ impl_wrapper! {
         fn inline_size(&self) -> usize;
         fn spilled(&self) -> bool;
         fn grow(&mut self, len: usize) -> ();
-        fn try_reserve(&mut self, additional: usize) -> std::result::Result<(), CollectionAllocErr>;
-        fn try_reserve_exact(&mut self, additional: usize) -> std::result::Result<(), CollectionAllocErr>;
-        fn try_grow(&mut self, len: usize) -> std::result::Result<(), CollectionAllocErr>
+        fn try_reserve(&mut self, additional: usize) -> Result<(), CollectionAllocErr>;
+        fn try_reserve_exact(&mut self, additional: usize) -> Result<(), CollectionAllocErr>;
+        fn try_grow(&mut self, len: usize) -> Result<(), CollectionAllocErr>
     }
 }
 
@@ -215,14 +206,14 @@ macro_rules! impl_try_from_into_buf_trait {
     ($($size:expr),*) => ($(
         impl<T> TryFrom<[T; $size]> for SmallVec1<[T; $size]> {
             type Error = Size0Error;
-            fn try_from(vec: [T; $size]) -> Result<Self> {
+            fn try_from(vec: [T; $size]) -> Result<Self, Size0Error> {
                 Self::try_from_buf(vec)
             }
         }
 
         impl<T> TryInto<[T; $size]> for SmallVec1<[T; $size]> {
             type Error = Self;
-            fn try_into(self) -> std::result::Result<[T; $size], Self> {
+            fn try_into(self) -> Result<[T; $size], Self> {
                 self.into_inner()
             }
         }
@@ -263,7 +254,7 @@ where
     A: Array,
 {
     type Error = Size0Error;
-    fn try_from(vec: Vec<A::Item>) -> Result<Self> {
+    fn try_from(vec: Vec<A::Item>) -> Result<Self, Size0Error> {
         Self::try_from_vec(vec)
     }
 }
@@ -283,7 +274,12 @@ mod tests {
     mod SmallVec1 {
         #![allow(non_snake_case)]
         use super::super::*;
-        use std::collections::hash_map::DefaultHasher;
+        use std::{
+            borrow::{Borrow, BorrowMut},
+            cmp::Ordering,
+            collections::hash_map::DefaultHasher,
+            hash::{Hash, Hasher},
+        };
 
         #[test]
         fn Clone() {
@@ -562,11 +558,11 @@ mod tests {
                 let _: Box<[u8]> = a.into();
 
                 let a: SmallVec1<[u8; 4]> = smallvec1![1, 3, 2, 4];
-                let a: std::result::Result<[u8; 4], _> = a.try_into();
+                let a: Result<[u8; 4], _> = a.try_into();
                 a.unwrap();
 
                 let a: SmallVec1<[u8; 4]> = smallvec1![1, 3, 2];
-                let a: std::result::Result<[u8; 4], _> = a.try_into();
+                let a: Result<[u8; 4], _> = a.try_into();
                 a.unwrap_err();
             }
         }
