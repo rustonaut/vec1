@@ -35,6 +35,8 @@
 //! }
 //!
 //! ```
+#[macro_use]
+mod shared;
 
 #[doc(hidden)]
 #[cfg(feature="smallvec-v1")]
