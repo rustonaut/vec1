@@ -6,6 +6,7 @@
 - minimal rust version is now 1.47
 - support for SmallVec1 backed by the smallvec crate (v>=1.6.1)
 - added no_std support (making `std` a default feature)
+- converted various Into/TryInto impls into From/TryFrom impls.
 
 ## Version 1.6.0 (11.08.2020)
 

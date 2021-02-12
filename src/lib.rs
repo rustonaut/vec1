@@ -73,13 +73,16 @@ use alloc::{
 
 #[cfg(feature="std")]
 use std::{
-    sync::Arc,
+    //TODO tests for io::Write and ffi::CString
     io,
     ffi::CString,
 };
 
 #[cfg(any(feature="std", test))]
-use std::error::Error;
+use std::{
+    error::Error,
+    sync::Arc,
+};
 
 /// Error returned by operations which would cause `Vec1` to have a length of 0.
 #[derive(Debug, Hash, Eq, PartialEq, Copy, Clone)]
@@ -489,22 +492,23 @@ where
     }
 }
 
-impl<T> Into<Rc<[T]>> for Vec1<T> {
-    fn into(self) -> Rc<[T]> {
-        self.0.into()
+impl<T> From<Vec1<T>> for Rc<[T]> {
+    fn from(vec: Vec1<T>) -> Self {
+        vec.0.into()
     }
 }
 
-#[cfg(feature="std")]
-impl<T> Into<Arc<[T]>> for Vec1<T> {
-    fn into(self) -> Arc<[T]> {
-        self.0.into()
+
+impl<T> From<Vec1<T>> for Box<[T]> {
+    fn from(vec: Vec1<T>) -> Self {
+        vec.0.into()
     }
 }
 
-impl<I> Into<Box<[I]>> for Vec1<I> {
-    fn into(self) -> Box<[I]> {
-        self.0.into()
+#[cfg(any(test, feature="std"))]
+impl<T> From<Vec1<T>> for Arc<[T]> {
+    fn from(vec: Vec1<T>) -> Self {
+        vec.0.into()
     }
 }
 
@@ -513,9 +517,9 @@ macro_rules! wrapper_from_to_try_from {
 
         wrapper_from_to_try_from!(impl[$($tv),*] TryFrom<$tf> for Vec1<$et> $($tail)*);
 
-        impl<$($tv)*> Into<$tf> for Vec1<$et> $($tail)* {
-            fn into(self) -> $tf {
-                self.0.into()
+        impl<$($tv)*> From<Vec1<$et>> for $tf $($tail)* {
+            fn from(vec: Vec1<$et>) -> Self {
+                vec.0.into()
             }
         }
     );
@@ -647,7 +651,7 @@ mod test {
         #![allow(non_snake_case)]
         use super::super::*;
 
-        use std::borrow::BorrowMut;
+        use std::{borrow::BorrowMut, sync::Arc};
 
         #[test]
         fn deref_slice() {
@@ -922,6 +926,26 @@ mod test {
             let bs: Box<[u8]> = vec![1, 2, 3].into();
             let vec = Vec1::<u8>::try_from(bs).unwrap();
             assert_eq!(vec, vec![1u8, 2, 3]);
+        }
+
+        #[test]
+        fn arc_from_vec1() {
+            let vec: Vec1<_> = vec1![1u8,2,3];
+            let arc_slice = Arc::<[u8]>::from(vec.clone());
+            assert_eq!(&*vec, &*arc_slice);
+        }
+
+        #[test]
+        fn rc_from_vec1() {
+            let vec = vec1![1u8,2,3];
+            let arc_slice = Rc::<[u8]>::from(vec.clone());
+            assert_eq!(&*vec, &*arc_slice);
+        }
+
+        #[test]
+        fn vec_deque_from_vec1() {
+            let vec = vec1![1u8,2,3];
+            VecDeque::from(vec);
         }
     }
 }

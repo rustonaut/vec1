@@ -21,7 +21,7 @@
 use crate::Size0Error;
 
 use core::{
-    convert::{TryFrom, TryInto},
+    convert::TryFrom,
 };
 use alloc::{vec::Vec, boxed::Box};
 
@@ -217,10 +217,10 @@ macro_rules! impl_try_from_into_buf_trait {
             }
         }
 
-        impl<T> TryInto<[T; $size]> for SmallVec1<[T; $size]> {
-            type Error = Self;
-            fn try_into(self) -> Result<[T; $size], Self> {
-                self.into_inner()
+        impl<T> TryFrom<SmallVec1<[T; $size]>> for [T; $size] {
+            type Error =  SmallVec1<[T; $size]>;
+            fn try_from(vec: SmallVec1<[T; $size]>) -> Result<Self,  SmallVec1<[T; $size]>> {
+                vec.into_inner()
             }
         }
     )*);
@@ -265,12 +265,12 @@ where
     }
 }
 
-impl<A> Into<Box<[A::Item]>> for SmallVec1<A>
+impl<A> From<SmallVec1<A>> for Box<[A::Item]>
 where
     A: Array,
 {
-    fn into(self) -> Box<[A::Item]> {
-        self.into_boxed_slice()
+    fn from(vec: SmallVec1<A>) -> Self {
+        vec.into_boxed_slice()
     }
 }
 
@@ -488,6 +488,15 @@ mod tests {
                 let _ = SmallVec1::<[u8; 4]>::try_from([1u8, 2, 3, 4]).unwrap();
                 let _ = SmallVec1::<[u8; 0]>::try_from([] as [u8; 0]).unwrap_err();
             }
+
+            #[test]
+            fn array_try_from_smallvec1() {
+                let vec: SmallVec1<[u8; 4]> = smallvec1![1, 3, 2, 4];
+                <[u8; 4]>::try_from(vec).unwrap();
+
+                let vec: SmallVec1<[u8; 4]> = smallvec1![1, 3, 2];
+                <[u8; 4]>::try_from(vec).unwrap_err();
+            }
         }
 
         #[test]
@@ -579,27 +588,25 @@ mod tests {
             assert_eq!(&*a, &[1u8, 3, 2, 4] as &[u8])
         }
 
-        mod Into {
+        mod From {
             use super::*;
 
             #[test]
-            fn misc() {
-                let a: SmallVec1<[u8; 4]> = smallvec1![1, 3, 2, 4];
-                let _: Vec<u8> = a.into();
+            fn boxed_slice_from_smallvec1() {
+                let vec: SmallVec1<[u8; 4]> = smallvec1![1, 3, 2, 4, 5];
+                Box::<[u8]>::from(vec);
+            }
 
-                let a: SmallVec1<[u8; 4]> = smallvec1![1, 3, 2, 4];
-                let _: SmallVec<[u8; 4]> = a.into();
+            #[test]
+            fn vec_from_smallvec1() {
+                let vec: SmallVec1<[u8; 4]> = smallvec1![1, 3, 2, 4];
+                Vec::<u8>::from(vec);
+            }
 
-                let a: SmallVec1<[u8; 4]> = smallvec1![1, 3, 2, 4, 5];
-                let _: Box<[u8]> = a.into();
-
-                let a: SmallVec1<[u8; 4]> = smallvec1![1, 3, 2, 4];
-                let a: Result<[u8; 4], _> = a.try_into();
-                a.unwrap();
-
-                let a: SmallVec1<[u8; 4]> = smallvec1![1, 3, 2];
-                let a: Result<[u8; 4], _> = a.try_into();
-                a.unwrap_err();
+            #[test]
+            fn smallvec_from_smallvec1() {
+                let vec: SmallVec1<[u8; 4]> = smallvec1![1, 3, 2, 4];
+                SmallVec::<[u8; 4]>::from(vec);
             }
         }
 
