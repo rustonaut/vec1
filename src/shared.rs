@@ -32,7 +32,7 @@ macro_rules! shared_impl {
             $($tb : $trait,)?;
 
         const _: () = {
-            use std::{
+            use core::{
                 borrow::{Borrow, BorrowMut},
                 cmp::{Eq, Ord, Ordering, PartialEq},
                 convert::TryFrom,
@@ -41,6 +41,7 @@ macro_rules! shared_impl {
                 ops::{Deref, DerefMut, Index, IndexMut},
                 slice::SliceIndex,
             };
+            use alloc::{vec::Vec, boxed::Box};
 
             impl<$t> $name<$t>
             where
@@ -434,7 +435,7 @@ macro_rules! shared_impl {
                 $($tb : $trait,)?
             {
                 type Item = &'a $item_ty;
-                type IntoIter = std::slice::Iter<'a, $item_ty>;
+                type IntoIter = core::slice::Iter<'a, $item_ty>;
 
                 fn into_iter(self) -> Self::IntoIter {
                     (&self.0).into_iter()
@@ -446,7 +447,7 @@ macro_rules! shared_impl {
                 $($tb : $trait,)?
             {
                 type Item = &'a mut $item_ty;
-                type IntoIter = std::slice::IterMut<'a, $item_ty>;
+                type IntoIter = core::slice::IterMut<'a, $item_ty>;
 
                 fn into_iter(self) -> Self::IntoIter {
                     (&mut self.0).into_iter()
@@ -574,7 +575,7 @@ macro_rules! shared_impl {
             //      dependency smallvec/serde, but we can mirror the serde implementation.
             #[cfg(feature = "serde")]
             const _: () = {
-                use std::marker::PhantomData;
+                use core::marker::PhantomData;
                 use serde::{
                     de::{SeqAccess,Deserialize, Visitor, Deserializer, Error as _},
                     ser::{Serialize, Serializer, SerializeSeq}

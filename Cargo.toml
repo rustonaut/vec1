@@ -12,6 +12,9 @@ repository = "https://github.com/rustonaut/vec1/"
 edition = "2018"
 
 [features]
+default = ["std"]
+std = []
+
 # Keep feature as to not brake code which used it in the past.
 # The Vec1 crate roughly traces rust stable=1 but tries to keep
 # as much compatiblility with older compiler versions. But it
@@ -32,10 +35,13 @@ unstable-nightly-try-from-impl = []
 # might be enabled by default.
 smallvec-v1 = ["smallvec_v1_"]
 
+# Enables the smallvec-v1/write feature
+smallvec-v1-write = ["std", "smallvec_v1_/write"]
+
 
 [dependencies]
 # Is a feature!
-serde = { version = "1.0", optional = true, features = ["derive"] }
+serde = { version = "1.0", optional = true, features = ["derive"], default-features=false }
 # In the future we will support smallvec v1 and v2 so if we had
 # a optional dependency called smallvec people might acidentally
 # pull it in as feature and create anoyences wrt. backward compatibility.
@@ -44,8 +50,6 @@ serde = { version = "1.0", optional = true, features = ["derive"] }
 version = "1.6.1"
 package = "smallvec"
 optional = true
-# currently we have no no_std support, so no reason to disable it
-features = ["write"]
 
 
 [dev-dependencies]

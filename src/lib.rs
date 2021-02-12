@@ -35,30 +35,51 @@
 //! }
 //!
 //! ```
-#[macro_use]
-mod shared;
+#![no_std]
+
+extern crate alloc;
+
+#[cfg(any(feature="std", test))]
+extern crate std;
 
 #[doc(hidden)]
 #[cfg(feature = "smallvec-v1")]
 pub extern crate smallvec_v1_;
 
+#[macro_use]
+mod shared;
+
+
 #[cfg(feature = "smallvec-v1")]
 pub mod smallvec_v1;
 
-use std::{
-    collections::BinaryHeap,
-    collections::VecDeque,
+use core::{
     convert::TryFrom,
-    error::Error as StdError,
-    ffi::CString,
-    fmt, io,
+    fmt,
     iter::{DoubleEndedIterator, ExactSizeIterator, Extend, IntoIterator, Peekable},
     ops::{Bound, RangeBounds},
-    rc::Rc,
     result::Result as StdResult,
-    sync::Arc,
-    vec,
 };
+
+use alloc::{
+    vec,
+    collections::BinaryHeap,
+    collections::VecDeque,
+    vec::Vec,
+    boxed::Box,
+    rc::Rc,
+    string::String,
+};
+
+#[cfg(feature="std")]
+use std::{
+    sync::Arc,
+    io,
+    ffi::CString,
+};
+
+#[cfg(any(feature="std", test))]
+use std::error::Error;
 
 /// Error returned by operations which would cause `Vec1` to have a length of 0.
 #[derive(Debug, Hash, Eq, PartialEq, Copy, Clone)]
@@ -70,7 +91,9 @@ impl fmt::Display for Size0Error {
         write!(fter, "Cannot produce a Vec1 with a length of zero.")
     }
 }
-impl StdError for Size0Error {}
+
+#[cfg(any(feature="std", test))]
+impl Error for Size0Error {}
 
 /// A macro similar to `vec!` to create a `Vec1`.
 ///
@@ -472,6 +495,7 @@ impl<T> Into<Rc<[T]>> for Vec1<T> {
     }
 }
 
+#[cfg(feature="std")]
 impl<T> Into<Arc<[T]>> for Vec1<T> {
     fn into(self) -> Arc<[T]> {
         self.0.into()
@@ -516,6 +540,7 @@ wrapper_from_to_try_from!(impl['a] TryFrom<&'a str> for Vec1<u8>);
 wrapper_from_to_try_from!(impl['a, T] TryFrom<&'a mut [T]> for Vec1<T> where T: Clone);
 wrapper_from_to_try_from!(impl Into + impl[T] TryFrom<VecDeque<T>> for Vec1<T>);
 
+#[cfg(feature="std")]
 impl TryFrom<CString> for Vec1<u8> {
     type Error = Size0Error;
 
@@ -529,6 +554,7 @@ impl TryFrom<CString> for Vec1<u8> {
     }
 }
 
+#[cfg(feature="std")]
 impl io::Write for Vec1<u8> {
     #[inline]
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
@@ -588,6 +614,7 @@ mod test {
     mod Size0Error {
         #![allow(non_snake_case)]
         use super::super::*;
+        use std::error::{Error as StdError};
 
         #[test]
         fn implements_std_error() {

@@ -20,10 +20,13 @@
 
 use crate::Size0Error;
 
-use std::{
+use core::{
     convert::{TryFrom, TryInto},
-    io,
 };
+use alloc::{vec::Vec, boxed::Box};
+
+#[cfg(feature="smallvec-v1-write")]
+use std::io;
 
 use smallvec::*;
 use smallvec_v1_ as smallvec;
@@ -271,6 +274,7 @@ where
     }
 }
 
+#[cfg(feature="smallvec-v1-write")]
 impl<A> io::Write for SmallVec1<A>
 where
     A: Array<Item = u8>,
@@ -303,10 +307,13 @@ mod tests {
         #![allow(non_snake_case)]
         use super::super::*;
         use std::{
-            borrow::{Borrow, BorrowMut},
+            format, vec,
+            string::String,
+            borrow::{Borrow, BorrowMut, ToOwned},
             cmp::Ordering,
             collections::hash_map::DefaultHasher,
             hash::{Hash, Hasher},
+            vec::Vec
         };
 
         #[test]
@@ -461,6 +468,7 @@ mod tests {
 
         mod TryFrom {
             use super::super::super::*;
+            use std::{vec, string::String, borrow::ToOwned};
 
             #[test]
             fn slice() {
