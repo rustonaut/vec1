@@ -44,7 +44,7 @@ macro_rules! __smallvec1_macro_v1 {
     );
     ($first:expr $(, $item:expr)* ) => ({
         let smallvec = $crate::smallvec_v1_::smallvec!($first $(, $item)*);
-        SmallVec1::try_from_smallvec(smallvec).unwrap()
+        $crate::smallvec_v1::SmallVec1::try_from_smallvec(smallvec).unwrap()
     });
 }
 
