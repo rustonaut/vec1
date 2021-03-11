@@ -35,6 +35,67 @@
 //! }
 //!
 //! ```
+//!
+//! # Features
+//!
+//! - `std` (default): If disabled this crate will only use `core` and `alloc` but not `std` as dependencies.
+//!                    Because of this some traits and method are not available if it is disabled.
+//!
+//! - `smallvec-v1` : Adds support for a vec1 variation backed by the smallvec crate
+//!                   version 1.x.y. (In the future there will likely be a additional `smallvec-v2`.).
+//!                   Works with no_std, i.e. if the default features are disabled.
+//!
+//! - `smallvec-v1-write`: Enables `smallvec/write`, this requires std. As we can't tell cargo to
+//!                        automatically enable `smallvec/write` if and only if `smallvec-v1` and
+//!                        `std` are both enabled this needs to be an extra feature.
+//!
+//! - `unstable-nightly-try-from-impl` (deprecated) : Was used to enable `TryFrom`/`TryInto` implementations
+//!                                                   before the traits became stable. Doesn't do anything by
+//!                                                   now, but still exist for compatibility reasons.
+//!
+//! # Rustdoc
+//!
+//! To have all intra-(and inter-) doc links working properly it is
+//! recommended to generate the documentation with nightly rustdoc.
+//! This is _only_ for the links in the documentation, library code
+//! and test should run at least on stable-2 (a two versions old stable)
+//! and might work on older versions too.
+//!
+//! # Rust Version / Stability
+//!
+//! Besides intra-doc links everything else is supposed to work on a
+//! two versions old stable release and everything newer, through it
+//! might work on older releases.
+//!
+//! Features which require nightly/beta will be prefixed with `unstable-`.
+//!
+//! For forwards compatibility the prefixed feature will be kept even if
+//! it's no longer unstable, through the code it feature gated is now also
+//! either always available or behind a non-prefixed feature gate which the
+//! `unstable-` prefixed feature gate enables.
+//!
+//! While I do try to keep `unstable-` features API stable this might not
+//! always be possible so enabling a `unstable-` prefixed features does
+//! exclude the stability guarantees normally expected from SemVer for
+//! code related to that feature. Still no patch version change will
+//! be pushed which brakes any code, even if it's `unstable-` prefixed!
+//!
+//! Updating dependencies follows following rules
+//!
+//! SemVer Dep. Update Kind | Publicly exposed dep? | Update of this Crate
+//! ------------------------|-----------------------|----------------
+//! patch update            | yes                   | patch (or minor)
+//! minor update            | yes                   | minor
+//! major update            | yes                   | won't happen, smallvec gets a second feature for v2
+//! patch update            | no                    | patch (or minor)
+//! minor update            | no                    | minor
+//! major update            | no                    | minor
+//!
+//! If `smallvec` gets a major update a additional feature will be added supporting
+//! both major versions of it *without* introducing a major update for this crate.
+//!
+//! I do my best so that I will never have to release a major version update for this crate as
+//! this would lead to API incompatibilities for other crates using this crate in their public API.
 #![no_std]
 
 extern crate alloc;

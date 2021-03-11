@@ -9,6 +9,7 @@ macro_rules! impl_wrapper {
             where
                 $($tb : $trait,)?
             {$(
+                /// See [`Vec`] for a rough idea how this method works.
                 #[inline]
                 pub fn $fn_name(self: impl_wrapper!{__PRIV_SELF &$($m)*} $(, $param: $tp)*) -> $rt {
                     (self.0).$fn_name($($param),*)
@@ -205,7 +206,7 @@ macro_rules! shared_impl {
                 }
 
 
-                /// See [`$wrapped::resize_with()`] but fails if it would resize to length 0.
+                /// See [`Vec::resize_with()`] but fails if it would resize to length 0.
                 pub fn try_resize_with<F>(&mut self, new_len: usize, f: F) -> Result<(), Size0Error>
                 where
                     F: FnMut() -> $item_ty

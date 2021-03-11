@@ -106,7 +106,7 @@ where
     /// # Panic
     ///
     /// Like [`SmallVec::from_buf_and_len()`] this fails if the length is > the
-    /// size of the buffer. I.e. `$name::try_from_buf_and_len([] as [u8;0],2)` will
+    /// size of the buffer. I.e. `SmallVec1::try_from_buf_and_len([] as [u8;0],2)` will
     /// panic.
     pub fn try_from_buf_and_len(buf: A, len: usize) -> Result<Self, Size0Error> {
         Self::try_from_smallvec(SmallVec::from_buf_and_len(buf, len))
