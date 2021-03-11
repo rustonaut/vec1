@@ -54,8 +54,6 @@ mod shared;
 pub mod smallvec_v1;
 
 use core::{
-    convert::TryFrom,
-    fmt,
     iter::{DoubleEndedIterator, ExactSizeIterator, Extend, IntoIterator, Peekable},
     ops::{Bound, RangeBounds},
     result::Result as StdResult,
@@ -65,8 +63,6 @@ use alloc::{
     vec,
     collections::BinaryHeap,
     collections::VecDeque,
-    vec::Vec,
-    boxed::Box,
     rc::Rc,
     string::String,
 };
@@ -83,6 +79,8 @@ use std::{
     error::Error,
     sync::Arc,
 };
+
+shared_impl! {@IMPORTS}
 
 /// Error returned by operations which would cause `Vec1` to have a length of 0.
 #[derive(Debug, Hash, Eq, PartialEq, Copy, Clone)]
