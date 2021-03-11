@@ -1,12 +1,15 @@
 
 # Change Log
 
-## Version 1.7.0 (pending)
+## Version 1.7.0 (11.03.2021)
 
 - minimal rust version is now 1.47
-- support for SmallVec1 backed by the smallvec crate (v>=1.6.1)
-- added no_std support (making `std` a default feature)
-- converted various Into/TryInto impls into From/TryFrom impls.
+- support for `SmallVec1` backed by the `smallvec` crate (v>=1.6.1)
+- added `no_std` support (making `std` a default feature)
+- converted various `Into`/`TryInto` impls into `From`/`TryFrom` impls.
+- changes in the documentation for various reasons, some functions
+  have now less good documentation as they are automatically implemented
+  for both `Vec1`, and `smallvec-v1::SmallVec1`.
 
 ## Version 1.6.0 (11.08.2020)
 
