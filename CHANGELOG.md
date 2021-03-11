@@ -38,10 +38,10 @@ New trait impl:
 
 ## Version 1.3.0 (21.03.2019)
 
-New manual proxied methods:
+New manual proxy methods:
 - splice
 - to_asci_lowercase
-- to_asci_upercase
+- to_ascii_uppercase
 
 New Into impl for following types:
 - Rc<[T]>

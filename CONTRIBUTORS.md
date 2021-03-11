@@ -27,6 +27,10 @@ Contributions ordered by PR number.
 
 - [README.md: Fix typo in first paragraph #1](https://github.com/rustonaut/vec1/pull/1)
 
+## Corentin Henry @little-dude
+
+- [Use fully qualified path in macro](https://github.com/rustonaut/vec1/pull/23)
+
 ## Matt Kantor @mkantor
 
 - [Basic CI workflow using GitHub actions.](https://github.com/rustonaut/vec1/pull/17)
