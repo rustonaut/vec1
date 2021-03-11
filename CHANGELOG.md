@@ -1,6 +1,11 @@
 
 # Change Log
 
+## Version 1.7.1 (pending)
+
+- updated documentation
+- more tests (pending)
+
 ## Version 1.7.0 (11.03.2021)
 
 - minimal rust version is now 1.47

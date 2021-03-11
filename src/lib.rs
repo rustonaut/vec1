@@ -41,6 +41,12 @@
 //! - `std` (default): If disabled this crate will only use `core` and `alloc` but not `std` as dependencies.
 //!                    Because of this some traits and method are not available if it is disabled.
 //!
+//! - `serde`: Implements `Serialize` and `Deserialize` for `Vec1`. Also implements it for
+//!            `SmallVec1` if both `serde` and `smallvec-v1` features are enabled. Note that
+//!            enabling both `serde` and `smallvec-v1` implements `Serialize` and `Deserialize`
+//!            for `SmallVec1` but will *not* enable `smallvec/serde` and as such will not
+//!            implement the `serde` traits for `smallvec::SmallVec`.
+//!
 //! - `smallvec-v1` : Adds support for a vec1 variation backed by the smallvec crate
 //!                   version 1.x.y. (In the future there will likely be a additional `smallvec-v2`.).
 //!                   Works with no_std, i.e. if the default features are disabled.
