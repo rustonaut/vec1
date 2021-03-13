@@ -647,6 +647,9 @@ impl io::Write for Vec1<u8> {
 }
 
 #[cfg(test)]
+mod t;
+
+#[cfg(test)]
 mod test {
 
     #[macro_export]
