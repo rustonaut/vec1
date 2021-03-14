@@ -244,6 +244,21 @@ macro_rules! shared_impl {
                 pub fn into_boxed_slice(self) -> Box<[$item_ty]> {
                     self.into_vec().into_boxed_slice()
                 }
+
+                /// Leaks the allocation to return a mutable slice reference.
+                ///
+                /// This is equivalent to turning this vector into a boxed
+                /// slice and then leaking that slice.
+                ///
+                /// In case of `SmallVec1` calling leak does entail an allocation
+                /// if the stack-buffer had not yet spilled.
+                pub fn leak<'a>(self) -> &'a mut [$item_ty]
+                where
+                    $item_ty: 'a
+                {
+                    self.into_vec().leak()
+                }
+
             }
 
             // methods in Vec not in &[] which can be directly exposed
@@ -377,6 +392,7 @@ macro_rules! shared_impl {
 
             impl<$t, B> PartialEq<B> for $name<$t>
             where
+                B: ?Sized,
                 $wrapped<$t>: PartialEq<B>,
                 $($tb : $trait,)?
             {

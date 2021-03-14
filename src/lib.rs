@@ -140,6 +140,8 @@ use std::{
     io,
     ffi::CString,
     sync::Arc,
+    borrow::{ToOwned, Cow},
+    num::NonZeroU8
 };
 
 #[cfg(any(feature="std", test))]
@@ -527,21 +529,58 @@ where
     }
 }
 
-impl<T> Vec1<T>
-where
-    T: PartialEq<T>,
-{
-    pub fn dedub(&mut self) {
-        self.0.dedup()
-    }
-}
-
 impl<A, B> PartialEq<Vec1<B>> for Vec1<A>
 where
     A: PartialEq<B>,
 {
     fn eq(&self, other: &Vec1<B>) -> bool {
         self.0.eq(&other.0)
+    }
+}
+
+#[cfg(feature="std")]
+impl<T> PartialEq<Vec1<T>> for Cow<'_, [T]>
+where
+    T: PartialEq<T> + Clone
+{
+    fn eq(&self, other: &Vec1<T>) -> bool {
+        self.eq(&other.0)
+    }
+}
+
+impl<T> PartialEq<Vec1<T>> for [T]
+where
+    T: PartialEq<T>
+{
+    fn eq(&self, other: &Vec1<T>) -> bool {
+        self.eq(&**other)
+    }
+}
+
+impl<T> PartialEq<Vec1<T>> for &'_ [T]
+where
+    T: PartialEq<T>
+{
+    fn eq(&self, other: &Vec1<T>) -> bool {
+        (&**self).eq(&**other)
+    }
+}
+
+impl<T> PartialEq<Vec1<T>> for &'_ mut [T]
+where
+    T: PartialEq<T>
+{
+    fn eq(&self, other: &Vec1<T>) -> bool {
+        (&**self).eq(&**other)
+    }
+}
+
+impl<T> PartialEq<Vec1<T>> for VecDeque<T>
+where
+    T: PartialEq<T>
+{
+    fn eq(&self, other: &Vec1<T>) -> bool {
+        self.eq(other.as_vec())
     }
 }
 
@@ -557,25 +596,31 @@ where
     }
 }
 
-impl<T> From<Vec1<T>> for Rc<[T]> {
-    fn from(vec: Vec1<T>) -> Self {
-        vec.0.into()
-    }
+macro_rules! wrapper_from_vec1 {
+    (impl[$($tv:tt)*] From<Vec1<$tf:ty>> for $other:ty where $($tail:tt)*) => (
+        impl<$($tv)*> From<Vec1<$tf>> for $other where $($tail)* {
+            fn from(vec: Vec1<$tf>) -> Self {
+                vec.0.into()
+            }
+        }
+    );
 }
 
-
-impl<T> From<Vec1<T>> for Box<[T]> {
-    fn from(vec: Vec1<T>) -> Self {
-        vec.0.into()
-    }
-}
+wrapper_from_vec1!(impl[T] From<Vec1<T>> for Rc<[T]> where);
+wrapper_from_vec1!(impl[T] From<Vec1<T>> for Box<[T]> where);
+wrapper_from_vec1!(impl[T] From<Vec1<T>> for BinaryHeap<T> where T: Ord);
+#[cfg(feature="std")]
+wrapper_from_vec1!(impl[T] From<Vec1<T>> for Arc<[T]> where);
+#[cfg(feature="std")]
+wrapper_from_vec1!(impl['a, T] From<Vec1<T>> for Cow<'a, [T]> where T: Clone);
 
 #[cfg(feature="std")]
-impl<T> From<Vec1<T>> for Arc<[T]> {
-    fn from(vec: Vec1<T>) -> Self {
-        vec.0.into()
+impl From<Vec1<NonZeroU8>> for CString {
+    fn from(vec: Vec1<NonZeroU8>) -> Self {
+        CString::from(vec.0)
     }
 }
+
 
 macro_rules! wrapper_from_to_try_from {
     (impl Into + impl[$($tv:tt)*] TryFrom<$tf:ty> for Vec1<$et:ty> $($tail:tt)*) => (
@@ -608,6 +653,9 @@ wrapper_from_to_try_from!(impl[] TryFrom<String> for Vec1<u8>);
 wrapper_from_to_try_from!(impl['a] TryFrom<&'a str> for Vec1<u8>);
 wrapper_from_to_try_from!(impl['a, T] TryFrom<&'a mut [T]> for Vec1<T> where T: Clone);
 wrapper_from_to_try_from!(impl Into + impl[T] TryFrom<VecDeque<T>> for Vec1<T>);
+
+#[cfg(feature="std")]
+wrapper_from_to_try_from!(impl['a, T] TryFrom<Cow<'a, [T]>> for Vec1<T> where [T]: ToOwned<Owned=Vec<T>>);
 
 #[cfg(feature="std")]
 impl TryFrom<CString> for Vec1<u8> {
@@ -767,7 +815,6 @@ mod test {
             assert_eq!(a.capacity(), 2);
         }
 
-        #[ignore = "not yet implemented"]
         #[test]
         fn into_boxed_slice() {
             let a = vec1![32u8, 12u8];
@@ -959,12 +1006,11 @@ mod test {
             a.try_resize_with(0, || 0u8).unwrap_err();
         }
 
-        #[ignore = "not yet implemented"]
         #[test]
         fn leak() {
-            // let mut a = vec1![1u8, 3];
-            // let s: &'static mut [u8] = a.leak();
-            // assert_eq!(s, &[1u8, 3]);
+            let a = vec1![1u8, 3];
+            let s: &'static mut [u8] = a.leak();
+            assert_eq!(s, &[1u8, 3]);
         }
 
         #[test]
@@ -1156,14 +1202,6 @@ mod test {
                 let s: &mut [u8] = a.borrow_mut();
                 assert_eq!(s, &mut [32u8, 103]);
             }
-
-            #[ignore = "not yet implemented"]
-            #[test]
-            fn of_vec() {
-                // let a = vec1![33u8];
-                // let v: &mut Vec<u8> = a.borrow_mut();
-                // assert_eq!(v, &mut std::vec![33u8]);
-            }
         }
 
         mod Clone {
@@ -1247,7 +1285,7 @@ mod test {
             }
         }
 
-        mod TryFrom_ {
+        mod TryFrom {
             use std::{borrow::ToOwned, convert::TryFrom};
             use crate::*;
 
@@ -1280,12 +1318,11 @@ mod test {
                 Vec1::<u8>::try_from("").unwrap_err();
             }
 
-            #[ignore = "not yet implemented"]
+            #[ignore = "not yet implemented, requires rustc 1.51"]
             #[test]
             fn from_array() {
-                // we just test if there is a impl for a arbitrary len
-                // which here is good enough but far from complete coverage!
-
+                // // we just test if there is a impl for a arbitrary len
+                // // which here is good enough but far from complete coverage!
                 // let array = [11u8; 100];
                 // let vec = Vec1::try_from(array).unwrap();
                 // assert_eq!(vec.iter().sum(), 110);
@@ -1328,17 +1365,17 @@ mod test {
                 Vec1::<u8>::try_from(cstring).unwrap_err();
             }
 
-            #[ignore = "not yet implemented"]
+            #[cfg(feature="std")]
             #[test]
             fn from_cow() {
-                // let slice: &[u8] = &[12u8, 33];
-                // let cow = Cow::Borrowed(slice);
-                // let vec = Vec1::try_from(cow).unwrap();
-                // assert_eq!(vec, slice);
+                let slice: &[u8] = &[12u8, 33];
+                let cow = Cow::Borrowed(slice);
+                let vec = Vec1::try_from(cow).unwrap();
+                assert_eq!(vec, slice);
 
-                // let slice: &[u8] = &[];
-                // let cow = Cow::Borrowed(slice);
-                // Vec1::try_from(cow).unwrap_err();
+                let slice: &[u8] = &[];
+                let cow = Cow::Borrowed(slice);
+                Vec1::try_from(cow).unwrap_err();
             }
 
             #[test]
@@ -1478,6 +1515,7 @@ mod test {
         }
 
         mod PartialEq {
+            use crate::*;
             use std::borrow::ToOwned;
 
             #[test]
@@ -1516,14 +1554,16 @@ mod test {
                 assert_eq!(vec.eq(&array2), false);
             }
 
-            #[ignore = "not yet implemented?"]
+            #[ignore = "not yet implemented, requires rustc 1.49"]
             #[test]
             fn to_slice() {
                 // let vec = vec1![67u8, 73, 12];
                 // let array: &[u8] = &[67, 73, 12];
                 // let array2: &[u8] = &[67, 73, 33];
-                // assert_eq!(vec.eq(array), true);
-                // assert_eq!(vec.eq(array2), false);
+
+                // //supposedly the relevant implementations landed on 1.48 but they did land on 1.49!
+                // assert_eq!(<Vec1<u8> as PartialEq<[u8]>>::eq(&vec, array), true);
+                // assert_eq!(<Vec1<u8> as PartialEq<[u8]>>::eq(&vec, array2), false);
             }
 
             #[test]
@@ -1586,48 +1626,48 @@ mod test {
         }
     }
 
+    #[cfg(feature="std")]
     mod Cow {
 
         mod From {
-            // use std::borrow::{Cow, ToOwned};
-            // use crate::*;
+            use std::borrow::{Cow, ToOwned};
+            use crate::*;
 
-            #[ignore = "not yet implemented"]
             #[test]
             fn from_vec1() {
-                // let vec = vec1!["ho".to_owned()];
-                // match Cow::<'_, [String]>::from(&vec) {
-                //     Cow::Borrowed(vec_ref) => assert_eq!(&vec, vec_ref),
-                //     Cow::Owned(_) => panic!("unexpected conversion") ,
-                // }
+                let vec = vec1!["ho".to_owned()];
+                match Cow::<'_, [String]>::from(vec.clone()) {
+                    Cow::Owned(other) => assert_eq!(vec, other),
+                    Cow::Borrowed(_) => panic!("unexpected conversion") ,
+                }
             }
 
-            //FIXME wait two times Cow<'a, [T]> from vec1 ??
+            //Note: no From<&Vec1<_>> as this would require cloning the vector which
+            //is not how it's work for From<&Vec<_>>
         }
 
         mod PartialEq {
-            // use std::borrow::Cow;
+            use std::borrow::Cow;
 
-            #[ignore = "not yet implemented"]
             #[test]
             fn to_vec1() {
-                // let cow: Cow<'_, [u8]> = Cow::Borrowed(&[1u8, 3, 4]);
-                // assert_eq!(cow.eq(&vec1![1u8, 3, 4]), true);
-                // assert_eq!(cow.eq(&vec1![2u8, 3, 4]), false);
+                let cow: Cow<'_, [u8]> = Cow::Borrowed(&[1u8, 3, 4]);
+                assert_eq!(cow.eq(&vec1![1u8, 3, 4]), true);
+                assert_eq!(cow.eq(&vec1![2u8, 3, 4]), false);
             }
         }
     }
 
+    #[cfg(feature="std")]
     mod CString {
         mod From {
-            // use std::{ffi::CString, num::NonZeroU8};
+            use std::{ffi::CString, num::NonZeroU8};
 
-            #[ignore = "not yet implemented"]
             #[test]
             fn from_vec1_non_zero_u8() {
-                // let vec = vec1![NonZeroU8::new(67).unwrap()];
-                // let cstring = CString::from(vec);
-                // assert_eq!(cstring, CString::new("C").unwrap());
+                let vec = vec1![NonZeroU8::new(67).unwrap()];
+                let cstring = CString::from(vec);
+                assert_eq!(cstring, CString::new("C").unwrap());
             }
         }
     }
@@ -1647,17 +1687,16 @@ mod test {
 
     mod BinaryHeap {
         mod From {
-            // use std::collections::BinaryHeap;
+            use std::collections::BinaryHeap;
 
-            #[ignore = "not yet implemented"]
             #[test]
             fn from_vec1() {
-                // let vec = vec1![1u8, 99, 23];
-                // let heap = BinaryHeap::from(vec);
-                // assert_eq!(heap.pop(), Some(99));
-                // assert_eq!(heap.pop(), Some(23));
-                // assert_eq!(heap.pop(), Some(1));
-                // assert_eq!(heap.pop(), None);
+                let vec = vec1![1u8, 99, 23];
+                let mut heap = BinaryHeap::from(vec);
+                assert_eq!(heap.pop(), Some(99));
+                assert_eq!(heap.pop(), Some(23));
+                assert_eq!(heap.pop(), Some(1));
+                assert_eq!(heap.pop(), None);
             }
         }
     }
@@ -1700,15 +1739,14 @@ mod test {
         }
 
         mod PartialEq {
-            // use alloc::collections::VecDeque;
+            use alloc::collections::VecDeque;
 
-            #[ignore = "not yet implemented"]
             #[test]
             fn to_vec1() {
-                // let queue = VecDeque::from(vec1![1u8, 2]);
+                let queue = VecDeque::from(vec1![1u8, 2]);
 
-                // assert!(queue.eq(&vec1![1u8, 2]), true);
-                // assert!(queue.eq(&vec1![1u8, 3]), false);
+                assert_eq!(queue.eq(&vec1![1u8, 2]), true);
+                assert_eq!(queue.eq(&vec1![1u8, 3]), false);
             }
         }
     }
@@ -1716,27 +1754,27 @@ mod test {
     mod slice {
 
         mod PartialEq {
+            use crate::*;
 
-            #[ignore = "not yet implemented"]
             #[test]
             fn slice_mut_to_vec1() {
-                // let slice = &mut [77u8];
-                // assert_eq!(slice.eq(&vec1![77u8]), true);
-                // assert_eq!(slice.eq(&vec1![0u8]), false);
+                let slice: &[u8] = &mut [77u8];
+                assert_eq!(slice.eq(&vec1![77u8]), true);
+                assert_eq!(slice.eq(&vec1![0u8]), false);
             }
 
             #[test]
             fn slice_to_vec1() {
-                // let slice = &[77u8];
-                // assert_eq!(<[_] as Eq>::eq(slice, &vec1![77u8]), true);
-                // assert_eq!(<[_] as Eq>::eq(slice, &vec1![1u8]), false);
+                let slice: &[u8] = &[77u8];
+                assert_eq!(<[_] as PartialEq<Vec1<_>>>::eq(slice, &vec1![77u8]), true);
+                assert_eq!(<[_] as PartialEq<Vec1<_>>>::eq(slice, &vec1![1u8]), false);
             }
 
             #[test]
             fn slice_ref_to_vec1() {
-                // let slice = &[77u8];
-                // assert_eq!(<&[_] as Eq>::eq(&slice, &vec1![77u8]), true);
-                // assert_eq!(<&[_] as Eq>::eq(&slice, &vec1![0u8]), false);
+                let slice: &[u8] = &[77u8];
+                assert_eq!(<&[_] as PartialEq<Vec1<_>>>::eq(&slice, &vec1![77u8]), true);
+                assert_eq!(<&[_] as PartialEq<Vec1<_>>>::eq(&slice, &vec1![0u8]), false);
             }
         }
     }
@@ -1745,7 +1783,7 @@ mod test {
 
         mod TryFrom {
 
-            #[ignore = "not yet implemented"]
+            #[ignore = "not yet implemented, requires rustc 1.51"]
             #[test]
             fn from_vec1() {
                 // let v = vec1![1u8, 10, 23];

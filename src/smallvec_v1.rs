@@ -580,6 +580,13 @@ mod tests {
             assert_eq!(&*a, &[1u8, 3, 2, 4] as &[u8])
         }
 
+        #[test]
+        fn leak() {
+            let a: SmallVec1<[u8; 32]> = smallvec1![1u8, 3];
+            let s: &'static mut [u8] = a.leak();
+            assert_eq!(s, &[1u8, 3]);
+        }
+
         mod From {
             use super::*;
 
