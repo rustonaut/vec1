@@ -1,10 +1,12 @@
 
 # Change Log
 
-## Version 1.7.1 (pending)
+## Version 1.8.0 (pending)
 
+- minimal rust version is now 1.48
 - updated documentation
 - more tests (pending)
+- missing methods and trait implementations (pending)
 
 ## Version 1.7.0 (11.03.2021)
 

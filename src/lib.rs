@@ -770,10 +770,9 @@ mod test {
         #[ignore = "not yet implemented"]
         #[test]
         fn into_boxed_slice() {
-            //TODO impl, also for smallvec?
-            // let a = vec1![32u8, 12u8];
-            // let a: Box<[u8]> = a.into_boxed_slice();
-            // assert_eq!(a, &[32u8, 12u8]);
+            let a = vec1![32u8, 12u8];
+            let boxed: Box<[u8]> = a.into_boxed_slice();
+            assert_eq!(&*boxed, &[32u8, 12u8]);
         }
 
         #[test]

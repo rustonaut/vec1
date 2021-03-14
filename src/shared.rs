@@ -235,6 +235,15 @@ macro_rules! shared_impl {
                     let last = smallvec.remove(smallvec.len() - 1);
                     (smallvec, last)
                 }
+
+                /// Turns this vector into a boxed slice.
+                ///
+                /// For `Vec1` this is as cheap as for `Vec` but for
+                /// `SmallVec1` this will cause an allocation if the
+                /// on-stack buffer was not yet spilled.
+                pub fn into_boxed_slice(self) -> Box<[$item_ty]> {
+                    self.into_vec().into_boxed_slice()
+                }
             }
 
             // methods in Vec not in &[] which can be directly exposed

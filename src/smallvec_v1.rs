@@ -138,11 +138,6 @@ where
         self.0.into_inner().map_err(SmallVec1)
     }
 
-    /// Forwards to [`SmallVec::into_boxed_slice()`].
-    pub fn into_boxed_slice(self) -> Box<[A::Item]> {
-        self.0.into_boxed_slice()
-    }
-
     /// See [`SmallVec::insert_many()`].
     pub fn insert_many<I: IntoIterator<Item = A::Item>>(&mut self, index: usize, iterable: I) {
         self.0.insert_many(index, iterable)
