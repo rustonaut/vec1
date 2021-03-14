@@ -298,15 +298,7 @@ mod tests {
     mod SmallVec1 {
         #![allow(non_snake_case)]
         use super::super::*;
-        use std::{
-            format, vec,
-            string::String,
-            borrow::{Borrow, BorrowMut, ToOwned},
-            cmp::Ordering,
-            collections::hash_map::DefaultHasher,
-            hash::{Hash, Hasher},
-            vec::Vec
-        };
+        use std::{borrow::{Borrow, BorrowMut, ToOwned}, cmp::Ordering, collections::hash_map::DefaultHasher, format, hash::{Hash, Hasher}, panic::catch_unwind, string::String, vec, vec::Vec};
 
         #[test]
         fn Clone() {
@@ -619,7 +611,17 @@ mod tests {
         }
 
         #[test]
+        fn truncate() {
+            let mut a: SmallVec1<[u8; 4]> = smallvec1![1, 3, 2, 4];
+            assert_eq!(a.truncate(0), Err(Size0Error));
+            assert_eq!(a.truncate(1), Ok(()));
+            assert_eq!(a.len(), 1);
+        }
+
+        #[test]
         fn try_truncate() {
+            #![allow(deprecated)]
+
             let mut a: SmallVec1<[u8; 4]> = smallvec1![1, 3, 2, 4];
             assert_eq!(a.try_truncate(0), Err(Size0Error));
             assert_eq!(a.try_truncate(1), Ok(()));
@@ -719,7 +721,16 @@ mod tests {
         }
 
         #[test]
+        fn pop() {
+            let mut a: SmallVec1<[u8; 4]> = smallvec1![1, 3];
+            assert_eq!(a.pop(), Ok(3));
+            assert_eq!(a.pop(), Err(Size0Error));
+        }
+
+        #[test]
         fn try_pop() {
+            #![allow(deprecated)]
+
             let mut a: SmallVec1<[u8; 4]> = smallvec1![1, 3];
             assert_eq!(a.try_pop(), Ok(3));
             assert_eq!(a.try_pop(), Err(Size0Error));
@@ -749,14 +760,37 @@ mod tests {
         }
 
         #[test]
+        fn swap_remove() {
+            let mut a: SmallVec1<[u8; 4]> = smallvec1![1, 3];
+            assert_eq!(a.swap_remove(0), Ok(1));
+            assert_eq!(a.swap_remove(0), Err(Size0Error));
+        }
+
+        #[test]
         fn try_swap_remove() {
+            #![allow(deprecated)]
+
             let mut a: SmallVec1<[u8; 4]> = smallvec1![1, 3];
             assert_eq!(a.try_swap_remove(0), Ok(1));
             assert_eq!(a.try_swap_remove(0), Err(Size0Error));
         }
 
         #[test]
+        fn remove() {
+            let mut a: SmallVec1<[u8; 4]> = smallvec1![1, 3];
+            assert_eq!(a.remove(0), Ok(1));
+            assert_eq!(a.remove(0), Err(Size0Error));
+
+            catch_unwind(|| {
+                let mut a: SmallVec1<[u8; 4]> = smallvec1![1, 3];
+                let _ = a.remove(200);
+            }).unwrap_err();
+        }
+
+        #[test]
         fn try_remove() {
+            #![allow(deprecated)]
+
             let mut a: SmallVec1<[u8; 4]> = smallvec1![1, 3];
             assert_eq!(a.try_remove(0), Ok(1));
             assert_eq!(a.try_remove(0), Err(Size0Error));
@@ -792,7 +826,16 @@ mod tests {
         }
 
         #[test]
+        fn resize_with() {
+            let mut a: SmallVec1<[u8; 4]> = smallvec1![1, 2];
+            assert_eq!(a.resize_with(0, Default::default), Err(Size0Error));
+            assert_eq!(a.resize_with(4, Default::default), Ok(()));
+        }
+
+        #[test]
         fn try_resize_with() {
+            #![allow(deprecated)]
+
             let mut a: SmallVec1<[u8; 4]> = smallvec1![1, 2];
             assert_eq!(a.try_resize_with(0, Default::default), Err(Size0Error));
             assert_eq!(a.try_resize_with(4, Default::default), Ok(()));
@@ -837,7 +880,18 @@ mod tests {
         }
 
         #[test]
+        fn resize() {
+            let mut a: SmallVec1<[u8; 4]> = smallvec1![1, 2, 3];
+            assert_eq!(a.resize(0, 12), Err(Size0Error));
+            assert_eq!(a.resize(2, 12), Ok(()));
+            assert_eq!(a.resize(4, 12), Ok(()));
+            assert_eq!(a.as_slice(), &[1u8, 2, 12, 12] as &[u8]);
+        }
+
+        #[test]
         fn try_resize() {
+            #![allow(deprecated)]
+
             let mut a: SmallVec1<[u8; 4]> = smallvec1![1, 2, 3];
             assert_eq!(a.try_resize(0, 12), Err(Size0Error));
             assert_eq!(a.try_resize(2, 12), Ok(()));
@@ -901,6 +955,4 @@ mod tests {
             }
         }
     }
-
-    //TODO try_drain
 }

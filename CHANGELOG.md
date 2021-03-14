@@ -5,8 +5,11 @@
 
 - minimal rust version is now 1.48
 - updated documentation
-- more tests (pending)
-- missing methods and trait implementations (pending)
+- more tests
+- deprecated the `try_` prefix usage as it created ambiguities with
+  other potential `try_` versions (like try and don't panic if out of
+  bounds or try and don't panic if allocation fails).
+- some missing methods and trait implementations (pending)
 
 ## Version 1.7.0 (11.03.2021)
 

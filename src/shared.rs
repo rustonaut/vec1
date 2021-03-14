@@ -125,10 +125,40 @@ macro_rules! shared_impl {
                 /// If len is 0 an error is returned as the
                 /// length >= 1 constraint must be uphold.
                 ///
-                pub fn try_truncate(&mut self, len: usize) -> Result<(), Size0Error> {
+                pub fn truncate(&mut self, len: usize) -> Result<(), Size0Error> {
                     if len > 0 {
                         self.0.truncate(len);
                         Ok(())
+                    } else {
+                        Err(Size0Error)
+                    }
+                }
+
+                /// Truncates the `SmalVec1` to given length.
+                ///
+                /// # Errors
+                ///
+                /// If len is 0 an error is returned as the
+                /// length >= 1 constraint must be uphold.
+                ///
+                #[deprecated(
+                    since = "1.8.0",
+                    note = "try_ prefix created ambiguity use `truncate`"
+                )]
+                #[inline(always)]
+                pub fn try_truncate(&mut self, len: usize) -> Result<(), Size0Error> {
+                    self.truncate(len)
+                }
+
+                /// Calls `swap_remove` on the inner smallvec if length >= 2.
+                ///
+                /// # Errors
+                ///
+                /// If len is 1 an error is returned as the
+                /// length >= 1 constraint must be uphold.
+                pub fn swap_remove(&mut self, index: usize) -> Result<$item_ty, Size0Error> {
+                    if self.len() > 1 {
+                        Ok(self.0.swap_remove(index))
                     } else {
                         Err(Size0Error)
                     }
@@ -140,9 +170,24 @@ macro_rules! shared_impl {
                 ///
                 /// If len is 1 an error is returned as the
                 /// length >= 1 constraint must be uphold.
+                #[deprecated(
+                    since = "1.8.0",
+                    note = "try_ prefix created ambiguity use `swap_remove`"
+                )]
+                #[inline(always)]
                 pub fn try_swap_remove(&mut self, index: usize) -> Result<$item_ty, Size0Error> {
+                    self.swap_remove(index)
+                }
+
+                /// Calls `remove` on the inner smallvec if length >= 2.
+                ///
+                /// # Errors
+                ///
+                /// If len is 1 an error is returned as the
+                /// length >= 1 constraint must be uphold.
+                pub fn remove(&mut self, index: usize) -> Result<$item_ty, Size0Error> {
                     if self.len() > 1 {
-                        Ok(self.0.swap_remove(index))
+                        Ok(self.0.remove(index))
                     } else {
                         Err(Size0Error)
                     }
@@ -154,12 +199,17 @@ macro_rules! shared_impl {
                 ///
                 /// If len is 1 an error is returned as the
                 /// length >= 1 constraint must be uphold.
+                ///
+                /// # Panics
+                ///
+                /// If `index` is greater or equal then `len`.
+                #[deprecated(
+                    since = "1.8.0",
+                    note = "try_ prefix created ambiguity use `remove`, also try_remove PANICS on out of bounds"
+                )]
+                #[inline(always)]
                 pub fn try_remove(&mut self, index: usize) -> Result<$item_ty, Size0Error> {
-                    if self.len() > 1 {
-                        Ok(self.0.remove(index))
-                    } else {
-                        Err(Size0Error)
-                    }
+                    self.remove(index)
                 }
 
                 /// Calls `dedup_by_key` on the inner smallvec.
@@ -187,16 +237,13 @@ macro_rules! shared_impl {
                     self.0.dedup_by(same_bucket)
                 }
 
-                /// Tries to remove the last element from this `$name`.
-                ///
-                /// Returns an error if the length is currently 1 (so the `try_pop` would reduce
-                /// the length to 0).
+                /// Remove the last element from this vector, if there is more than one element in it.
                 ///
                 /// # Errors
                 ///
                 /// If len is 1 an error is returned as the
                 /// length >= 1 constraint must be uphold.
-                pub fn try_pop(&mut self) -> Result<$item_ty, Size0Error> {
+                pub fn pop(&mut self) -> Result<$item_ty, Size0Error> {
                     if self.len() > 1 {
                         //UNWRAP_SAFE: pop on len > 1 can not be none
                         Ok(self.0.pop().unwrap())
@@ -205,9 +252,23 @@ macro_rules! shared_impl {
                     }
                 }
 
+                /// Remove the last element from this vector, if there is more than one element in it.
+                ///
+                /// # Errors
+                ///
+                /// If len is 1 an error is returned as the
+                /// length >= 1 constraint must be uphold.
+                #[deprecated(
+                    since = "1.8.0",
+                    note = "try_ prefix created ambiguity use `pop`"
+                )]
+                #[inline(always)]
+                pub fn try_pop(&mut self) -> Result<$item_ty, Size0Error> {
+                    self.pop()
+                }
 
                 /// See [`Vec::resize_with()`] but fails if it would resize to length 0.
-                pub fn try_resize_with<F>(&mut self, new_len: usize, f: F) -> Result<(), Size0Error>
+                pub fn resize_with<F>(&mut self, new_len: usize, f: F) -> Result<(), Size0Error>
                 where
                     F: FnMut() -> $item_ty
                 {
@@ -217,6 +278,19 @@ macro_rules! shared_impl {
                     } else {
                         Err(Size0Error)
                     }
+                }
+
+                /// See [`Vec::resize_with()`] but fails if it would resize to length 0.
+                #[deprecated(
+                    since = "1.8.0",
+                    note = "try_ prefix created ambiguity use `resize_with`"
+                )]
+                #[inline(always)]
+                pub fn try_resize_with<F>(&mut self, new_len: usize, f: F) -> Result<(), Size0Error>
+                where
+                    F: FnMut() -> $item_ty
+                {
+                    self.resize_with(new_len, f)
                 }
 
                 /// Splits off the first element of this vector and returns it together with the rest of the
@@ -303,13 +377,24 @@ macro_rules! shared_impl {
                 $item_ty: Clone,
                 $($tb : $trait,)?
             {
-                pub fn try_resize(&mut self, len: usize, value: $item_ty) -> Result<(), Size0Error> {
+                /// See [`Vec::resize()`] but fails if it would resize to length 0.
+                pub fn resize(&mut self, len: usize, value: $item_ty) -> Result<(), Size0Error> {
                     if len == 0 {
                         Err(Size0Error)
                     } else {
                         self.0.resize(len, value);
                         Ok(())
                     }
+                }
+
+                /// See [`Vec::resize()`] but fails if it would resize to length 0.
+                #[deprecated(
+                    since = "1.8.0",
+                    note = "try_ prefix created ambiguity use `resize_with`"
+                )]
+                #[inline(always)]
+                pub fn try_resize(&mut self, len: usize, value: $item_ty) -> Result<(), Size0Error> {
+                    self.resize(len, value)
                 }
             }
 

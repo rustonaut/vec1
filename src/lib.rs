@@ -5,9 +5,6 @@
 //! can be used assuring there is at least 1 element and through this reducing
 //! the number of possible error causes.
 //!
-//! The crate provides an optional `serde` feature, which provides
-//! implementations of `serde::Serialize`/`serde::Deserialize`.
-//!
 //! # Example
 //!
 //! ```
@@ -200,8 +197,7 @@ shared_impl! {
     /// with the same function signature.
     ///
     /// Methods of `Vec` which could reduce the length to 0
-    /// are implemented with a `try_` prefix returning a `Result`.
-    /// (e.g. `try_pop(&self)`, `try_truncate()`, etc.).
+    /// are return a `Result` wrapping their normal return type.
     ///
     /// Methods with returned `Option<T>` with `None` if the length was 0
     /// (and do not reduce the length) now return T. (e.g. `first`,
@@ -212,8 +208,7 @@ shared_impl! {
     /// due to the len 1 guarantee). Be aware implementations may lack behind a bit,
     /// fell free to open a issue/make a PR, but please search closed and open
     /// issues for duplicates first.
-    // #[derive(Debug, Clone, Eq, Hash, PartialOrd, Ord)]
-    // #[cfg_attr(feature = "serde", derive(serde::Serialize))]
+    ///
     pub struct Vec1<I>(Vec<I>);
 }
 
@@ -402,12 +397,38 @@ impl<T> Vec1<T> {
         Ok(Vec1(out))
     }
 
+    /// Class `split_off` on the wrapped vector
+    ///
+    /// # Panics
+    ///
+    /// **If `at` is greater then `len`. (In the same way [`Vec.split_off()`] does.)**
+    ///
+    /// # Errors
+    ///
+    /// If splitting would result in an empty `Vec1` an error is returned, this happens
+    /// if `at` is `0` or `at` is equals to `len`.
+    pub fn split_off(&mut self, at: usize) -> Result<Vec1<T>, Size0Error> {
+        if at == 0 || at == self.len() {
+            Err(Size0Error)
+        } else {
+            let out = self.0.split_off(at);
+            Ok(Vec1(out))
+        }
+    }
+
     /// Calls `split_off` on the inner vec if both resulting parts have length >= 1.
+    ///
+    /// **In difference to `split_off` this also returns a `Size0Error` if `at` is
+    /// greater then `len`. Which is different to how [`Vec.split_off()`] behaves.**
     ///
     /// # Errors
     ///
     /// If after the split any part would be empty an error is returned as the
     /// length >= 1 constraint must be uphold.
+    #[deprecated(
+        since = "1.8.0",
+        note = "try_ prefix created ambiguity use `split_off`, `try_split_off doesn't panic on out of bounds `at`"
+    )]
     pub fn try_split_off(&mut self, at: usize) -> Result<Vec1<T>, Size0Error> {
         if at == 0 || at >= self.len() {
             Err(Size0Error)
@@ -698,26 +719,10 @@ impl io::Write for Vec1<u8> {
 mod test {
     #![allow(non_snake_case)]
 
-    #[macro_export]
-    macro_rules! assert_ok {
-        ($val:expr) => {{
-            match $val {
-                Ok(res) => res,
-                Err(err) => panic!("expected Ok(..) got Err({:?})", err),
-            }
-        }};
-        ($val:expr, $ctx:expr) => {{
-            match $val {
-                Ok(res) => res,
-                Err(err) => panic!("expected Ok(..) got Err({:?}) [ctx: {:?}]", err, $ctx),
-            }
-        }};
-    }
-
     mod Size0Error {
         #![allow(non_snake_case)]
         use super::super::*;
-        use std::error::{Error as StdError};
+        use std::error::Error as StdError;
 
         #[test]
         fn implements_std_error() {
@@ -731,7 +736,7 @@ mod test {
         use super::range_covers_vec1;
 
         let len = 3;
-        // common slicesa
+        // common slices
         assert!(range_covers_vec1(&(..), len));
         assert!(range_covers_vec1(&(..3), len));
         assert!(!range_covers_vec1(&(..2), len));
@@ -823,7 +828,19 @@ mod test {
         }
 
         #[test]
+        fn truncate() {
+            let mut a = vec1![42u8, 32, 1];
+            a.truncate(1).unwrap();
+            assert_eq!(a.len(), 1);
+            assert_eq!(a, &[42u8]);
+
+            a.truncate(0).unwrap_err();
+        }
+
+        #[test]
         fn try_truncate() {
+            #![allow(deprecated)]
+
             let mut a = vec1![42u8, 32, 1];
             a.try_truncate(1).unwrap();
             assert_eq!(a.len(), 1);
@@ -865,7 +882,19 @@ mod test {
         }
 
         #[test]
+        fn swap_remove() {
+            let mut a = vec1![1u8,2, 4];
+            a.swap_remove(0).unwrap();
+            assert_eq!(a, &[4u8, 2]);
+            a.swap_remove(0).unwrap();
+            assert_eq!(a, &[2u8]);
+            a.swap_remove(0).unwrap_err();
+        }
+
+
+        #[test]
         fn try_swap_remove() {
+            #![allow(deprecated)]
             let mut a = vec1![1u8,2, 4];
             a.try_swap_remove(0).unwrap();
             assert_eq!(a, &[4u8, 2]);
@@ -885,7 +914,27 @@ mod test {
         }
 
         #[test]
+        fn remove() {
+            // we only test that it's there as we only
+            // forward to the underlying Vec so this test
+            // is enough
+            let mut a = vec1![9u8, 7, 3];
+            a.remove(1).unwrap();
+            assert_eq!(a, &[9u8, 3]);
+            a.remove(1).unwrap();
+            assert_eq!(a, &[9u8]);
+            a.remove(0).unwrap_err();
+
+            catch_unwind(|| {
+                let mut a = vec1![9u8, 7, 3];
+                let _ = a.remove(200);
+            }).unwrap_err();
+        }
+
+        #[test]
         fn try_remove() {
+            #![allow(deprecated)]
+
             // we only test that it's there as we only
             // forward to the underlying Vec so this test
             // is enough
@@ -895,20 +944,19 @@ mod test {
             a.try_remove(1).unwrap();
             assert_eq!(a, &[9u8]);
             a.try_remove(0).unwrap_err();
-        }
 
-        #[should_panic]
-        #[test]
-        fn try_remove_still_panics_if_index_is_out_of_bounds() {
-            let mut a = vec1![9u8, 7, 3];
-            let _ = a.try_remove(200);
+            // try_remove is inconsistent and panics on out of bounds but e.g. try_split_off doesn't!
+            catch_unwind(|| {
+                let mut a = vec1![9u8, 7, 3];
+                let _ = a.remove(200);
+            }).unwrap_err();
         }
 
         #[ignore = "not implemented, might never be implemented"]
         #[test]
-        fn try_retain() {
+        fn retain() {
             // let mut a = vec1![9u8, 7, 3];
-            // a.try_retain()
+            // a.retain()
         }
 
         #[test]
@@ -933,7 +981,19 @@ mod test {
         }
 
         #[test]
+        fn pop() {
+            let mut a = vec1![3u8, 10, 2];
+            a.pop().unwrap();
+            assert_eq!(a, &[3u8, 10]);
+            a.pop().unwrap();
+            assert_eq!(a, &[3u8]);
+            a.pop().unwrap_err();
+        }
+
+        #[test]
         fn try_pop() {
+            #![allow(deprecated)]
+
             let mut a = vec1![3u8, 10, 2];
             a.try_pop().unwrap();
             assert_eq!(a, &[3u8, 10]);
@@ -951,9 +1011,9 @@ mod test {
 
         #[ignore = "not yet implemented"]
         #[test]
-        fn try_drain() {
+        fn drain() {
             // let mut a = vec1![1u8, 2, 4, 4, 5];
-            // let out = a.try_drain(3..).unwrap().collect::<Vec<_>>();
+            // let out = a.drain(3..).unwrap().collect::<Vec<_>>();
             // assert_eq!(a, &[1u8, 2, 4]);
             // assert_eq!(out, &[4u8, 5])
             // TODO ..2  TODO x..y TODO x..=y TODO ...
@@ -980,7 +1040,25 @@ mod test {
         }
 
         #[test]
+        fn split_off() {
+            let mut left = vec1![88u8, 73, 12, 6];
+            let mut right = left.split_off(1).unwrap();
+            assert_eq!(left, &[88u8]);
+            assert_eq!(right, &[73u8, 12, 6]);
+
+            right.split_off(0).unwrap_err();
+            right.split_off(right.len()).unwrap_err();
+
+            catch_unwind(|| {
+                let mut v = vec1![1u8, 3, 4];
+                let _ = v.split_off(200);
+            }).unwrap_err();
+        }
+
+        #[test]
         fn try_split_off() {
+            #![allow(deprecated)]
+
             let mut left = vec1![88u8, 73, 12, 6];
             let mut right = left.try_split_off(1).unwrap();
             assert_eq!(left, &[88u8]);
@@ -988,18 +1066,23 @@ mod test {
 
             right.try_split_off(0).unwrap_err();
             right.try_split_off(right.len()).unwrap_err();
-        }
 
-        #[test]
-        fn try_split_off_and_out_of_bounds_panic() {
-            let mut a = vec1![32u8];
-            //FIXME[BUG] the implementation is wrong but stabilized :(
-            //It should still panic... or return a different error.
-            let Size0Error = a.try_split_off(200).unwrap_err();
+            // Also returns `Size0Error` on out of bounds.
+            let Size0Error = right.try_split_off(200).unwrap_err();
         }
 
         #[test]
         fn resize_with() {
+            let mut a = vec1![1u8];
+            a.resize_with(3, || 3u8).unwrap();
+            assert_eq!(a, &[1u8, 3, 3]);
+            a.resize_with(0, || 0u8).unwrap_err();
+        }
+
+        #[test]
+        fn try_resize_with() {
+            #![allow(deprecated)]
+
             let mut a = vec1![1u8];
             a.try_resize_with(3, || 3u8).unwrap();
             assert_eq!(a, &[1u8, 3, 3]);
@@ -1014,7 +1097,17 @@ mod test {
         }
 
         #[test]
+        fn resize() {
+            let mut a = vec1![1u8, 2];
+            a.resize(4, 19).unwrap();
+            assert_eq!(a, &[1u8, 2, 19, 19]);
+            a.resize(0, 19).unwrap_err();
+        }
+
+        #[test]
         fn try_resize() {
+            #![allow(deprecated)]
+
             let mut a = vec1![1u8, 2];
             a.try_resize(4, 19).unwrap();
             assert_eq!(a, &[1u8, 2, 19, 19]);
@@ -1057,23 +1150,6 @@ mod test {
             a.splice(.., Vec::<u8>::new()).unwrap_err();
         }
 
-        #[ignore = "not yet renamed, deprecate splice"]
-        #[test]
-        fn try_splice() {
-            // let mut a = vec1![1u8, 2, 3, 4];
-            // let out: Vec<u8> = a.try_splice(1..3, std::vec![11, 12, 13]).unwrap().collect();
-            // assert_eq!(a, &[1u8, 11, 12, 13, 4]);
-            // assert_eq!(out, &[2u8, 3]);
-            // let out: Vec<u8> = a.try_splice(2.., std::vec![7, 8]).unwrap().collect();
-            // assert_eq!(a, &[1u8, 11, 7, 8]);
-            // assert_eq!(out, &[12u8, 13, 4]);
-            // let out: Vec<u8> = a.try_splice(..2, std::vec![100, 200]).unwrap().collect();
-            // assert_eq!(a, &[100u8, 200, 7, 8]);
-            // assert_eq!(out, &[1u8, 11]);
-
-            // a.try_splice(.., Vec::<u8>::new()).unwrap_err();
-        }
-
         #[test]
         fn splice_still_panics_if_out_of_bounds() {
             let res = catch_unwind(|| {
@@ -1087,22 +1163,6 @@ mod test {
                 let _ = a.splice(..100, vec1![32u8]);
             });
             assert!(res.is_err());
-        }
-
-        #[ignore = "not yet renamed"]
-        #[test]
-        fn try_splice_still_panics_if_out_of_bounds() {
-            // let res = catch_unwind(|| {
-            //     let mut a = vec1![1u8, 2, 3, 4];
-            //     a.try_splice(3..2, vec1![32u8]);
-            // });
-            // assert!(res.is_err());
-
-            // let res = catch_unwind(|| {
-            //     let mut a = vec1![1u8, 2, 3, 4];
-            //     a.try_splice(..100, vec1![32u8]);
-            // });
-            // assert!(res.is_err());
         }
 
         #[test]
