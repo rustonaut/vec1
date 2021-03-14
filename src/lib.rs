@@ -1189,6 +1189,22 @@ mod test {
             assert_eq!(a.last_mut(), &mut 13u8);
         }
 
+        #[test]
+        fn split_off_last() {
+            let a = vec1![12u8, 33, 44];
+            let (heads, last) : (Vec<u8>, u8) = a.split_off_last();
+            assert_eq!(heads, &[12u8, 33]);
+            assert_eq!(last, 44);
+        }
+
+        #[test]
+        fn split_off_first() {
+            let a = vec1![12u8, 33, 45];
+            let (first, tail) : (u8, Vec<u8>) = a.split_off_first();
+            assert_eq!(tail, &[33u8, 45]);
+            assert_eq!(first, 12);
+        }
+
         mod AsMut {
             use crate::*;
 
