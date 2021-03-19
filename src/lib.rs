@@ -752,6 +752,7 @@ mod test {
     }
 
     mod Vec1 {
+        use proptest::prelude::*;
         use std::panic::catch_unwind;
 
         use super::super::*;
@@ -952,11 +953,46 @@ mod test {
             }).unwrap_err();
         }
 
-        #[ignore = "not implemented, might never be implemented"]
         #[test]
         fn retain() {
-            // let mut a = vec1![9u8, 7, 3];
-            // a.retain()
+            let mut a = vec1![9u8, 7, 3];
+            let Size0Error = a.retain(|_| false).unwrap_err();
+            assert_eq!(a.len(), 1);
+            assert_eq!(a.first(), &3);
+
+            let mut a = vec1![9u8, 4, 3, 8, 9];
+            a.retain(|v| *v % 2 == 0).unwrap();
+
+            assert_eq!(a.len(), 2);
+            assert_eq!(a.first(), &4);
+            assert_eq!(a.last(), &8);
+        }
+
+        proptest! {
+            #[test]
+            fn same_behavior_as_vec_except_when_empty(
+                data in (1usize..=20)
+                    .prop_flat_map(|size| prop::collection::vec(any::<bool>(), size..=size))
+            ) {
+                use std::convert::TryFrom;
+
+                let mut vec = data.clone();
+                let mut vec1 = Vec1::try_from(data).unwrap();
+                let last = *vec1.last();
+
+                vec.retain(|value| *value == true);
+                let res = vec1.retain(|value| *value == true);
+
+                if vec.is_empty() {
+                    assert_eq!(res, Err(Size0Error));
+                    assert_eq!(vec1.len(), 1);
+                    assert_eq!(vec1.last(), &last);
+                } else {
+                    assert_eq!(res, Ok(()));
+                    assert_eq!(&*vec, &*vec1);
+                }
+
+            }
         }
 
         #[test]

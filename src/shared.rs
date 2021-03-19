@@ -212,6 +212,67 @@ macro_rules! shared_impl {
                     self.remove(index)
                 }
 
+                /// Removes all elements except the ones which the predicate says need to be retained.
+                ///
+                /// The moment the last element would be removed this will instead fail, not removing
+                /// the element. **All but the last element will have been removed anyway.**
+                ///
+                /// # Error
+                ///
+                /// If the last element would be removed instead of removing it a `Size0Error` is
+                /// returned.
+                ///
+                /// # Example
+                ///
+                /// Is for `Vec1` but similar code works with `SmallVec1`, too.
+                ///
+                /// ```
+                /// # use vec1::vec1;
+                ///
+                /// let mut vec = vec1![1, 7, 8, 9, 10];
+                /// vec.retain(|v| *v % 2 == 1).unwrap();
+                /// assert_eq!(vec, vec1![1, 7, 9]);
+                /// let Size0Error = vec.retain(|_| false).unwrap_err();
+                /// assert_eq!(vec.len(), 1);
+                /// assert_eq!(vec.last(), &9);
+                /// ```
+                pub fn retain<F>(&mut self, mut f: F) -> Result<(), Size0Error>
+                where
+                    F: FnMut(&$item_ty) -> bool
+                {
+                    // code is based on the code in the standard library,
+                    // given a local instal of rust v1.50.0 source documentation in rustup:
+                    // <path-to-rustup-rust-v1.50.0-toolchain-with-source-doc>/share/doc/rust/html/src/alloc/vec.rs.html#1314-1334
+                    let len = self.len();
+                    let mut del = 0;
+                    {
+                        let v = &mut **self;
+
+                        for i in 0..len {
+                            if !f(&v[i]) {
+                                del += 1;
+                            } else if del > 0 {
+                                v.swap(i - del, i);
+                            }
+                        }
+                    }
+                    if del == 0 {
+                        Ok(())
+                    } else {
+                        if del < len {
+                            self.0.truncate(len - del);
+                            Ok(())
+                        } else {
+                            // if we would delete all then:
+                            // del == len AND no swap was done
+                            // so retain only last and return error
+                            self.swap(0, len - 1);
+                            self.0.truncate(1);
+                            Err(Size0Error)
+                        }
+                    }
+                }
+
                 /// Calls `dedup_by_key` on the inner smallvec.
                 ///
                 /// While this can remove elements it will
