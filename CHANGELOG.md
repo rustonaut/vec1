@@ -9,7 +9,11 @@
 - deprecated the `try_` prefix usage as it created ambiguities with
   other potential `try_` versions (like try and don't panic if out of
   bounds or try and don't panic if allocation fails).
-- some missing methods and trait implementations (pending)
+- some missing methods and trait implementations (e.g. `drain)
+- fixed bug in `Vec1.splice()` which caused the code to return
+  a `Size0Error` in a very specific edge case where it should
+  have panicked due to a out of bounds range like `Vec.splice()`
+  does.
 
 ## Version 1.7.0 (11.03.2021)
 
