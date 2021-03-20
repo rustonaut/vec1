@@ -132,7 +132,6 @@ use alloc::{
 
 #[cfg(feature="std")]
 use std::{
-    //TODO tests for io::Write and ffi::CString
     io,
     ffi::CString,
     sync::Arc,
@@ -445,20 +444,17 @@ impl<T> Vec1<T> {
     /// If range covers the whole vec and the replacement iterator doesn't yield
     /// any value an error is returned **instead of doing any splicing**.
     ///
-    /// This means that if an error is returned `next` might still have been called
-    /// once on the `replace_with` iterator.
+    /// **To check if the iterator will yield values we need to turn call next on it
+    /// once which means that if an error is returned [`Iterator::next()`] is still called once!**
     ///
     /// # Panics
     ///
-    /// This **should** panic under some conditions, but does not. This is a bug
-    /// which will be fixed IFF there ever is a breaking version change.
-    ///
-    /// The conditions where it *should panic but returns a `Err(Size0Error)` are*:
+    /// This **will** panic  under the same conditions as [`Vec::splice()`],
+    /// the conditions are:
     ///
     /// - if the starting point is greater than the end point
     /// - if the end point is greater than the length of the vector.
     ///
-    //TODO deprecate => splice2
     pub fn splice<R, I>(
         &mut self,
         range: R,
@@ -469,7 +465,11 @@ impl<T> Vec1<T> {
         R: RangeBounds<usize>,
     {
         let mut replace_with = replace_with.into_iter().peekable();
-        let (range_covers_all, _oob) = crate::shared::range_covers_slice(&range, self.len());
+        let (range_covers_all, out_of_bounds) = crate::shared::range_covers_slice(&range, self.len());
+
+        if out_of_bounds {
+            panic!("out of bounds range, either start > end or end > len");
+        }
 
         if range_covers_all && replace_with.peek().is_none() {
             Err(Size0Error)
@@ -1194,38 +1194,43 @@ mod test {
         #[test]
         fn splice() {
             let mut a = vec1![1u8, 2, 3, 4];
+
             let out: Vec<u8> = a.splice(1..3, std::vec![11, 12, 13]).unwrap().collect();
             assert_eq!(a, &[1u8, 11, 12, 13, 4]);
             assert_eq!(out, &[2u8, 3]);
+
             let out: Vec<u8> = a.splice(2.., std::vec![7, 8]).unwrap().collect();
             assert_eq!(a, &[1u8, 11, 7, 8]);
             assert_eq!(out, &[12u8, 13, 4]);
+
             let out: Vec<u8> = a.splice(..2, std::vec![100, 200]).unwrap().collect();
             assert_eq!(a, &[100u8, 200, 7, 8]);
             assert_eq!(out, &[1u8, 11]);
+
             let out: Vec<u8> = a.splice(.., std::vec![10, 220]).unwrap().collect();
             assert_eq!(a, &[10u8, 220]);
             assert_eq!(out, &[100u8, 200, 7, 8]);
+
             let out: Vec<u8> = a.splice(1.., Vec::<u8>::new()).unwrap().collect();
             assert_eq!(a, &[10u8]);
             assert_eq!(out, &[220u8]);
 
             a.splice(.., Vec::<u8>::new()).unwrap_err();
-        }
 
-        #[test]
-        fn splice_still_panics_if_out_of_bounds() {
-            let res = catch_unwind(|| {
-                let mut a = vec1![1u8, 2, 3, 4];
-                let _ = a.splice(3..2, vec1![32u8]);
-            });
-            assert!(res.is_err());
+            assert!(catch_unwind(|| {
+                let mut a = vec1![1u8, 2];
+                let _ = a.splice(1..0, std::vec![]);
+            }).is_err());
 
-            let res = catch_unwind(|| {
-                let mut a = vec1![1u8, 2, 3, 4];
-                let _ = a.splice(..100, vec1![32u8]);
-            });
-            assert!(res.is_err());
+            assert!(catch_unwind(|| {
+                let mut a = vec1![1u8, 2];
+                let _ = a.splice(3.., std::vec![]);
+            }).is_err());
+
+            assert!(catch_unwind(|| {
+                let mut a = vec1![1u8, 2];
+                let _ = a.splice(..3, std::vec![]);
+            }).is_err());
         }
 
         #[test]
@@ -1280,7 +1285,6 @@ mod test {
 
             #[test]
             fn of_self() {
-                //TODO check smallvec
                 let mut a = vec1![33u8, 123];
                 let v: &mut Vec1<u8> = a.as_mut();
                 assert_eq!(v, &mut vec1![33u8, 123]);
@@ -1451,9 +1455,7 @@ mod test {
             #[test]
             fn from_str() {
                 let vec = Vec1::<u8>::try_from("hy").unwrap();
-                //TODO remove all unnecessary
                 assert_eq!(vec, "hy".as_bytes());
-
                 Vec1::<u8>::try_from("").unwrap_err();
             }
 

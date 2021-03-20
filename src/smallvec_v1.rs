@@ -412,10 +412,23 @@ mod tests {
             let _: &SmallVec<[u8; 4]> = a.as_ref();
         }
 
-        #[test]
-        fn AsMut() {
-            let mut a: SmallVec1<[u8; 4]> = smallvec1![12, 23];
-            let _: &mut [u8] = a.as_mut();
+        mod AsMut {
+            use super::{SmallVec1, smallvec1};
+
+            #[test]
+            fn os_slice() {
+                let mut a: SmallVec1<[u8; 4]> = smallvec1![12, 23];
+                let _: &mut [u8] = a.as_mut();
+            }
+
+            #[test]
+            fn of_self() {
+                let mut a: SmallVec1<[u8; 4]> = smallvec1![33u8, 123];
+                let v: &mut SmallVec1<[u8; 4]> = a.as_mut();
+                let mut expected: SmallVec1<[u8; 4]> = smallvec1![33u8, 123];
+                assert_eq!(v, &mut expected);
+            }
+
         }
 
         #[test]
