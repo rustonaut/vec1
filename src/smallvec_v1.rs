@@ -28,6 +28,7 @@ use smallvec_v1_ as smallvec;
 
 pub use crate::__smallvec1_macro_v1 as smallvec1;
 
+use smallvec::Drain;
 shared_impl! {@IMPORTS}
 
 #[doc(hidden)]

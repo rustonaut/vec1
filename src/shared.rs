@@ -1,3 +1,38 @@
+use core::ops::{Bound, RangeBounds};
+
+/// Returns the boolean pair `(covers_all_of_slice, is_out_of_bounds)`.
+///
+/// E.g. given a unbound start of the range, if the end of the range is behind the len of
+/// the slice it will cover all of the slice but it also will be out of bounds.
+///
+/// E.g. given a bound start at 1 of the range, if the end of the range is behind the len
+/// of the slice it will *not* cover all but still be out of bounds.
+///
+//FIXME(v2.0): For simplicity we might move the panic into this check (but currently can't as for Vec1::splice we don't panic)
+pub(crate) fn range_covers_slice(range: &impl RangeBounds<usize>, slice_len: usize) -> (bool, bool) {
+    // As this is only used for vec1 we don't need the if vec_len == 0.
+    // if vec_len == 0 { return true; }
+    let (covers_start, oob_start) = range_covers_slice_start(range.start_bound(), slice_len);
+    let (covers_end, oob_end) = range_covers_slice_end(range.end_bound(), slice_len);
+    (covers_start && covers_end, oob_start || oob_end)
+}
+
+fn range_covers_slice_start(start_bound: Bound<&usize>, slice_len: usize) -> (bool, bool) {
+    match start_bound {
+        Bound::Included(idx) => (*idx == 0, *idx > slice_len),
+        Bound::Excluded(idx) => (false, *idx >= slice_len),
+        Bound::Unbounded => (true, false),
+    }
+}
+
+fn range_covers_slice_end(end_bound: Bound<&usize>, len: usize) -> (bool, bool) {
+    match end_bound {
+        Bound::Included(idx) => if len == 0 { (true, true ) } else { (*idx >= len - 1, *idx >= len) },
+        Bound::Excluded(idx) => (*idx >= len, *idx > len),
+        Bound::Unbounded => (true, false),
+    }
+}
+
 macro_rules! impl_wrapper {
     (
         base_bounds_macro = $($tb:ident : $trait:ident)?,
@@ -29,7 +64,7 @@ macro_rules! shared_impl {
             convert::TryFrom,
             fmt::{self, Debug},
             hash::{Hash, Hasher},
-            ops::{Deref, DerefMut, Index, IndexMut},
+            ops::{Deref, DerefMut, Index, IndexMut, RangeBounds},
             slice::SliceIndex,
         };
         use alloc::{vec::Vec, boxed::Box};
@@ -210,6 +245,33 @@ macro_rules! shared_impl {
                 #[inline(always)]
                 pub fn try_remove(&mut self, index: usize) -> Result<$item_ty, Size0Error> {
                     self.remove(index)
+                }
+
+                /// If calls `drain` on the underlying vector if it will not empty the vector.
+                ///
+                /// # Error
+                ///
+                /// If calling `drain` would empty the vector an `Err(Size0Error)` is returned
+                /// **instead** of draining the vector.
+                ///
+                /// # Panic
+                ///
+                /// Like [`Vec::drain()`] panics if:
+                ///
+                /// - The starting point is greater than the end point.
+                /// - The end point is greater than the length of the vector.
+                ///
+                pub fn drain<R>(&mut self, range: R) -> Result<Drain<'_, $t>, Size0Error>
+                where
+                    R: RangeBounds<usize>
+                {
+                    let (covers_all, out_of_bounds) = crate::shared::range_covers_slice(&range, self.len());
+                    // To make sure we get the same panic we do call drain if it will cause a panic.
+                    if covers_all && !out_of_bounds {
+                        Err(Size0Error)
+                    } else {
+                        Ok(self.0.drain(range))
+                    }
                 }
 
                 /// Removes all elements except the ones which the predicate says need to be retained.
@@ -817,4 +879,177 @@ macro_rules! shared_impl {
             };
         // };
     );
+}
+
+#[cfg(test)]
+mod tests {
+    use core::ops::{Bound, RangeBounds};
+
+
+    #[derive(Debug)]
+    struct AnyBound {
+        start: Bound<usize>,
+        end: Bound<usize>
+    }
+
+    fn bound_as_ref(bound: &Bound<usize>) -> Bound<&usize> {
+        match bound {
+            Bound::Included(v) => Bound::Included(v),
+            Bound::Excluded(v) => Bound::Excluded(v),
+            Bound::Unbounded => Bound::Unbounded
+        }
+    }
+
+    impl RangeBounds<usize> for AnyBound {
+        fn start_bound(&self) -> Bound<&usize> {
+            bound_as_ref(&self.start)
+        }
+
+        fn end_bound(&self) -> Bound<&usize> {
+            bound_as_ref(&self.end)
+        }
+    }
+
+    mod range_covers_slice_start {
+        use core::ops::Bound;
+        use super::super::range_covers_slice_start;
+
+        #[test]
+        fn included_bound() {
+            let cases = &[
+                (1, 10, (false, false)),
+                (0, 0, (true, false)),
+                (0, 1, (true, false)),
+                (1, 0, (false, true)),
+                (11, 10, (false, true)),
+                (1, 1, (false, false)),
+            ];
+            for (start, len, expected_res) in cases {
+                let res = range_covers_slice_start(Bound::Included(start), *len);
+                assert_eq!(res, *expected_res, "Failed start=${}, len=${}, res]=${:?}", start, len, res);
+            }
+        }
+
+        #[test]
+        fn excluded_bound() {
+            let cases = &[
+                (1, 10, (false, false)),
+                (0, 0, (false, true)),
+                (0, 1, (false, false)),
+                (1, 0, (false, true)),
+                (11, 10, (false, true)),
+                (1, 1, (false, true)),
+            ];
+            for (start, len, expected_res) in cases {
+                let res = range_covers_slice_start(Bound::Excluded(start), *len);
+                assert_eq!(res, *expected_res, "Failed start=${}, len=${}, res]=${:?}", start, len, res);
+            }
+        }
+
+        #[test]
+        fn unbound_bound() {
+            for len in &[0, 1, 100] {
+                assert_eq!(
+                    range_covers_slice_start(Bound::Unbounded, *len),
+                    (true, false)
+                );
+            }
+        }
+    }
+
+    mod range_covers_slice_end {
+        use core::ops::Bound;
+        use super::super::range_covers_slice_end;
+
+        #[test]
+        fn included_bound() {
+            let cases = &[
+                (5, 6, (true, false)),
+                (4, 6, (false, false)),
+                (0, 10, (false, false)),
+                (6, 6, (true, true)),
+                (9, 8, (true, true)),
+                (0, 0, (true, true))
+            ];
+            for (end, len, expected_res) in cases {
+                let res = range_covers_slice_end(Bound::Included(end), *len);
+                assert_eq!(res, *expected_res, "Failed start=${}, len=${}, res]=${:?}", end, len, res);
+            }
+        }
+
+        #[test]
+        fn excluded_bound() {
+            let cases = &[
+                (5, 6, (false, false)),
+                (4, 6, (false, false)),
+                (0, 10, (false, false)),
+                (6, 6, (true, false)),
+                (0, 0, (true, false)),
+                (11, 10, (true, true)),
+                (1, 0, (true, true))
+            ];
+            for (end, len, expected_res) in cases {
+                let res = range_covers_slice_end(Bound::Excluded(end), *len);
+                assert_eq!(res, *expected_res, "Unexpected result: start=${}, len=${}, res=${:?} => ${:?}", end, len, res, expected_res);
+            }
+        }
+
+        #[test]
+        fn unbound_bound() {
+            for len in &[0, 1, 100] {
+                assert_eq!(
+                    range_covers_slice_end(Bound::Unbounded, *len),
+                    (true, false)
+                );
+            }
+        }
+
+    }
+
+    mod range_covers_slice {
+        use super::AnyBound;
+        use super::super::range_covers_slice;
+
+
+
+        #[test]
+        fn test_multiple_cases_from_table() {
+            use core::ops::Bound::*;
+            /*
+                start           end         cover-all   oob
+                ----------------------------------------------
+                cover           cover       true        false
+                cover           non-cover   false       false
+                cover           cover-oob   true        true
+                non-cover       cover       false       false
+                non-cover       non-cover   false       false
+                non-cover       cover-oob   false       true
+                non-cover-oob   cover       false       true
+                non-cover-obb   non-cover   false       true
+                non-cover-oob   cover-oob   false       true
+            */
+            let len = 3;
+            let cases: &[_] = &[
+                (Included(0), Excluded(len), (true, false)),
+                (Unbounded, Excluded(len-1), (false, false)),
+                (Included(0), Included(len), (true, true)),
+
+                (Included(1), Included(len-1), (false, false)),
+                (Excluded(0), Included(len-2), (false, false)),
+                (Included(1), Excluded(len+4), (false, true)),
+
+                (Excluded(len), Excluded(len), (false, true)),
+                (Included(len+1), Excluded(len-1), (false, true)),
+                (Excluded(len), Included(len), (false, true))
+            ];
+
+            for &(start, end, expected_res) in cases.into_iter() {
+                let bound = AnyBound { start, end };
+                let res = range_covers_slice(&bound, len);
+                assert_eq!(res, expected_res, "Unexpected result: bound=${:?}, len=${} => ${:?}", bound, len, expected_res)
+            }
+
+        }
+
+    }
 }

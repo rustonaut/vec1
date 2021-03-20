@@ -119,7 +119,6 @@ pub mod smallvec_v1;
 
 use core::{
     iter::{DoubleEndedIterator, ExactSizeIterator, Extend, IntoIterator, Peekable},
-    ops::{Bound, RangeBounds},
     result::Result as StdResult,
 };
 
@@ -146,6 +145,7 @@ use std::{
     error::Error,
 };
 
+use alloc::vec::Drain;
 shared_impl! {@IMPORTS}
 
 /// Error returned by operations which would cause `Vec1` to have a length of 0.
@@ -438,15 +438,27 @@ impl<T> Vec1<T> {
         }
     }
 
-    /// Calls `splice` on the underlying vec if it will not produce an empty vec.
+    /// Calls `splice` on the underlying vec (only) if it wont produce an empty vec.
     ///
     /// # Errors
     ///
     /// If range covers the whole vec and the replacement iterator doesn't yield
-    /// any value an error is returned.
+    /// any value an error is returned **instead of doing any splicing**.
     ///
     /// This means that if an error is returned `next` might still have been called
     /// once on the `replace_with` iterator.
+    ///
+    /// # Panics
+    ///
+    /// This **should** panic under some conditions, but does not. This is a bug
+    /// which will be fixed IFF there ever is a breaking version change.
+    ///
+    /// The conditions where it *should panic but returns a `Err(Size0Error)` are*:
+    ///
+    /// - if the starting point is greater than the end point
+    /// - if the end point is greater than the length of the vector.
+    ///
+    //TODO deprecate => splice2
     pub fn splice<R, I>(
         &mut self,
         range: R,
@@ -457,7 +469,7 @@ impl<T> Vec1<T> {
         R: RangeBounds<usize>,
     {
         let mut replace_with = replace_with.into_iter().peekable();
-        let range_covers_all = range_covers_vec1(&range, self.len());
+        let (range_covers_all, _oob) = crate::shared::range_covers_slice(&range, self.len());
 
         if range_covers_all && replace_with.peek().is_none() {
             Err(Size0Error)
@@ -480,35 +492,6 @@ impl Vec1<u8> {
     }
 }
 
-fn range_covers_vec1(range: &impl RangeBounds<usize>, vec1_len: usize) -> bool {
-    // As this is only used for vec1 we don't need the if vec_len == 0.
-    // if vec_len == 0 { return true; }
-    range_covers_vec_start(range) && range_covers_vec_end(range, vec1_len)
-}
-
-fn range_covers_vec_start(range: &impl RangeBounds<usize>) -> bool {
-    match range.start_bound() {
-        Bound::Included(idx) => *idx == 0,
-        // there is no idx before 0, so if you start from a excluded index
-        // you can not cover 0
-        Bound::Excluded(_idx) => false,
-        Bound::Unbounded => true,
-    }
-}
-
-fn range_covers_vec_end(range: &impl RangeBounds<usize>, len: usize) -> bool {
-    match range.end_bound() {
-        Bound::Included(idx) => {
-            // covers all if it goes up to the last idx which is len-1
-            *idx >= len - 1
-        }
-        Bound::Excluded(idx) => {
-            // len = max_idx + 1, so if excl_end = len it's > max_idx, so >= is correct
-            *idx >= len
-        }
-        Bound::Unbounded => true,
-    }
-}
 
 pub struct Splice<'a, I: Iterator + 'a> {
     vec_splice: vec::Splice<'a, Peekable<I>>,
@@ -729,26 +712,6 @@ mod test {
             fn comp_check<T: StdError>() {}
             comp_check::<Size0Error>();
         }
-    }
-
-    #[test]
-    fn range_covers_vec() {
-        use super::range_covers_vec1;
-
-        let len = 3;
-        // common slices
-        assert!(range_covers_vec1(&(..), len));
-        assert!(range_covers_vec1(&(..3), len));
-        assert!(!range_covers_vec1(&(..2), len));
-        assert!(!range_covers_vec1(&(1..3), len));
-        assert!(range_covers_vec1(&(0..3), len));
-        assert!(range_covers_vec1(&(0..), len));
-        assert!(!range_covers_vec1(&(1..), len));
-        assert!(!range_covers_vec1(&(len..), len));
-
-        // unusual slices
-        assert!(!range_covers_vec1(&(..0), len));
-        assert!(!range_covers_vec1(&(2..1), len));
     }
 
     mod Vec1 {
@@ -1045,14 +1008,78 @@ mod test {
             assert_eq!(a, &[9u8, 12, 93, 33, 12]);
         }
 
-        #[ignore = "not yet implemented"]
-        #[test]
-        fn drain() {
-            // let mut a = vec1![1u8, 2, 4, 4, 5];
-            // let out = a.drain(3..).unwrap().collect::<Vec<_>>();
-            // assert_eq!(a, &[1u8, 2, 4]);
-            // assert_eq!(out, &[4u8, 5])
-            // TODO ..2  TODO x..y TODO x..=y TODO ...
+        macro_rules! do_call_drain {
+            ($vec:ident.drain($from:expr, $to:expr, $incl:expr) => $iter:ident => $map:block) => ({
+                match ($from, $to) {
+                    (Some(from), Some(to)) => {
+                        if $incl {
+                            let $iter = $vec.drain(from..=to);
+                            $map
+                        } else {
+                            let $iter = $vec.drain(from..to);
+                            $map
+                        }
+                    },
+                    (None, Some(to)) => {
+                        if $incl {
+                            let $iter = $vec.drain(..=to);
+                            $map
+                        } else {
+                            let $iter = $vec.drain(..to);
+                            $map
+                        }
+                    },
+                    (Some(from), None) => {
+                        let $iter = $vec.drain(from..);
+                        $map
+                    },
+                    (None, None) => {
+                        let $iter = $vec.drain(..);
+                        $map
+                    }
+                }
+            });
+        }
+
+        proptest!{
+
+            #[test]
+            fn works_as_in_vec_except_if_draining_all(
+                data in prop::collection::vec(any::<u8>(), 1..=5),
+                start in (0usize..7).prop_map(|v| if v == 7 { None } else { Some(v) }),
+                end in (0usize..7).prop_map(|v| if v == 7 { None } else { Some(v) }),
+                incl in any::<bool>()
+            ) {
+                use std::convert::TryFrom;
+
+                let mut data2 = data.clone();
+                let res_vec = catch_unwind(move || {
+                    let drained = do_call_drain!(data2.drain(start, end, incl) => iter => { iter.collect::<Vec<u8>>() });
+                    (data2, drained)
+                });
+
+                let mut data2 = Vec1::try_from(data.clone()).unwrap();
+                let res_vec1 = catch_unwind(move ||{
+                    let drained = do_call_drain!(data2.drain(start, end, incl) => iter_res => { iter_res.map(|iter| iter.collect::<Vec<u8>>()) });
+                    (data2, drained)
+                });
+
+                match (res_vec, res_vec1) {
+                    (Err(_), Err(_)) => {/*both paniced (out of bounds)*/},
+                    (Ok(_), Err(panic)) => std::panic::resume_unwind(panic),
+                    (Err(panic), Ok(_)) => std::panic::resume_unwind(panic),
+                    (Ok((vec, vec_drained)), Ok((vec1, vec1_res))) => {
+                        if vec.is_empty() {
+                            assert_eq!(vec1_res, Err(Size0Error));
+                            assert_eq!(&*vec1, &*data);
+                        } else {
+                            let vec1_drained = vec1_res.unwrap();
+                            assert_eq!(vec_drained, vec1_drained);
+                            assert_eq!(&*vec, &*vec1);
+                        }
+                    }
+                }
+            }
         }
 
         // #[test]
