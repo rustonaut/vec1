@@ -1,7 +1,12 @@
 
 # Change Log
 
-## Version 1.8.0 (pending)
+## Version 1.9.0 (pending)
+
+- Added missing LICENSE-MIT,LICENSE-APACHE files. Licensing
+  did not change.
+
+## Version 1.8.0 (21.04.2021)
 
 - minimal rust version is now 1.48
 - updated documentation
