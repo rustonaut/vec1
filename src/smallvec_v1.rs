@@ -20,7 +20,7 @@
 
 use crate::Size0Error;
 
-#[cfg(feature="smallvec-v1-write")]
+#[cfg(feature = "smallvec-v1-write")]
 use std::io;
 
 use smallvec::*;
@@ -267,7 +267,7 @@ where
     }
 }
 
-#[cfg(feature="smallvec-v1-write")]
+#[cfg(feature = "smallvec-v1-write")]
 impl<A> io::Write for SmallVec1<A>
 where
     A: Array<Item = u8>,
@@ -299,7 +299,17 @@ mod tests {
     mod SmallVec1 {
         #![allow(non_snake_case)]
         use super::super::*;
-        use std::{borrow::{Borrow, BorrowMut, ToOwned}, cmp::Ordering, collections::hash_map::DefaultHasher, format, hash::{Hash, Hasher}, panic::catch_unwind, string::String, vec, vec::Vec};
+        use std::{
+            borrow::{Borrow, BorrowMut, ToOwned},
+            cmp::Ordering,
+            collections::hash_map::DefaultHasher,
+            format,
+            hash::{Hash, Hasher},
+            panic::catch_unwind,
+            string::String,
+            vec,
+            vec::Vec,
+        };
 
         #[test]
         fn Clone() {
@@ -413,7 +423,7 @@ mod tests {
         }
 
         mod AsMut {
-            use super::{SmallVec1, smallvec1};
+            use super::{smallvec1, SmallVec1};
 
             #[test]
             fn os_slice() {
@@ -428,7 +438,6 @@ mod tests {
                 let mut expected: SmallVec1<[u8; 4]> = smallvec1![33u8, 123];
                 assert_eq!(v, &mut expected);
             }
-
         }
 
         #[test]
@@ -466,7 +475,7 @@ mod tests {
 
         mod TryFrom {
             use super::super::super::*;
-            use std::{vec, string::String, borrow::ToOwned};
+            use std::{borrow::ToOwned, string::String, vec};
 
             #[test]
             fn slice() {
@@ -798,7 +807,8 @@ mod tests {
             catch_unwind(|| {
                 let mut a: SmallVec1<[u8; 4]> = smallvec1![1, 3];
                 let _ = a.remove(200);
-            }).unwrap_err();
+            })
+            .unwrap_err();
         }
 
         #[test]

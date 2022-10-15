@@ -103,7 +103,7 @@
 
 extern crate alloc;
 
-#[cfg(any(feature="std", test))]
+#[cfg(any(feature = "std", test))]
 extern crate std;
 
 #[doc(hidden)]
@@ -113,7 +113,6 @@ pub extern crate smallvec_v1_;
 #[macro_use]
 mod shared;
 
-
 #[cfg(feature = "smallvec-v1")]
 pub mod smallvec_v1;
 
@@ -122,27 +121,19 @@ use core::{
     result::Result as StdResult,
 };
 
-use alloc::{
-    vec,
-    collections::BinaryHeap,
-    collections::VecDeque,
-    rc::Rc,
-    string::String,
-};
+use alloc::{collections::BinaryHeap, collections::VecDeque, rc::Rc, string::String, vec};
 
-#[cfg(feature="std")]
+#[cfg(feature = "std")]
 use std::{
-    io,
+    borrow::{Cow, ToOwned},
     ffi::CString,
+    io,
+    num::NonZeroU8,
     sync::Arc,
-    borrow::{ToOwned, Cow},
-    num::NonZeroU8
 };
 
-#[cfg(any(feature="std", test))]
-use std::{
-    error::Error,
-};
+#[cfg(any(feature = "std", test))]
+use std::error::Error;
 
 use alloc::vec::Drain;
 shared_impl! {@IMPORTS}
@@ -158,7 +149,7 @@ impl fmt::Display for Size0Error {
     }
 }
 
-#[cfg(any(feature="std", test))]
+#[cfg(any(feature = "std", test))]
 impl Error for Size0Error {}
 
 /// A macro similar to `vec!` to create a `Vec1`.
@@ -465,7 +456,8 @@ impl<T> Vec1<T> {
         R: RangeBounds<usize>,
     {
         let mut replace_with = replace_with.into_iter().peekable();
-        let (range_covers_all, out_of_bounds) = crate::shared::range_covers_slice(&range, self.len());
+        let (range_covers_all, out_of_bounds) =
+            crate::shared::range_covers_slice(&range, self.len());
 
         if out_of_bounds {
             panic!("out of bounds range, either start > end or end > len");
@@ -491,7 +483,6 @@ impl Vec1<u8> {
         Vec1(self.0.to_ascii_lowercase())
     }
 }
-
 
 pub struct Splice<'a, I: Iterator + 'a> {
     vec_splice: vec::Splice<'a, Peekable<I>>,
@@ -542,10 +533,10 @@ where
     }
 }
 
-#[cfg(feature="std")]
+#[cfg(feature = "std")]
 impl<T> PartialEq<Vec1<T>> for Cow<'_, [T]>
 where
-    T: PartialEq<T> + Clone
+    T: PartialEq<T> + Clone,
 {
     fn eq(&self, other: &Vec1<T>) -> bool {
         self.eq(&other.0)
@@ -554,7 +545,7 @@ where
 
 impl<T> PartialEq<Vec1<T>> for [T]
 where
-    T: PartialEq<T>
+    T: PartialEq<T>,
 {
     fn eq(&self, other: &Vec1<T>) -> bool {
         self.eq(&**other)
@@ -563,7 +554,7 @@ where
 
 impl<T> PartialEq<Vec1<T>> for &'_ [T]
 where
-    T: PartialEq<T>
+    T: PartialEq<T>,
 {
     fn eq(&self, other: &Vec1<T>) -> bool {
         (&**self).eq(&**other)
@@ -572,7 +563,7 @@ where
 
 impl<T> PartialEq<Vec1<T>> for &'_ mut [T]
 where
-    T: PartialEq<T>
+    T: PartialEq<T>,
 {
     fn eq(&self, other: &Vec1<T>) -> bool {
         (&**self).eq(&**other)
@@ -581,7 +572,7 @@ where
 
 impl<T> PartialEq<Vec1<T>> for VecDeque<T>
 where
-    T: PartialEq<T>
+    T: PartialEq<T>,
 {
     fn eq(&self, other: &Vec1<T>) -> bool {
         self.eq(other.as_vec())
@@ -613,18 +604,17 @@ macro_rules! wrapper_from_vec1 {
 wrapper_from_vec1!(impl[T] From<Vec1<T>> for Rc<[T]> where);
 wrapper_from_vec1!(impl[T] From<Vec1<T>> for Box<[T]> where);
 wrapper_from_vec1!(impl[T] From<Vec1<T>> for BinaryHeap<T> where T: Ord);
-#[cfg(feature="std")]
+#[cfg(feature = "std")]
 wrapper_from_vec1!(impl[T] From<Vec1<T>> for Arc<[T]> where);
-#[cfg(feature="std")]
+#[cfg(feature = "std")]
 wrapper_from_vec1!(impl['a, T] From<Vec1<T>> for Cow<'a, [T]> where T: Clone);
 
-#[cfg(feature="std")]
+#[cfg(feature = "std")]
 impl From<Vec1<NonZeroU8>> for CString {
     fn from(vec: Vec1<NonZeroU8>) -> Self {
         CString::from(vec.0)
     }
 }
-
 
 macro_rules! wrapper_from_to_try_from {
     (impl Into + impl[$($tv:tt)*] TryFrom<$tf:ty> for Vec1<$et:ty> $($tail:tt)*) => (
@@ -658,10 +648,10 @@ wrapper_from_to_try_from!(impl['a] TryFrom<&'a str> for Vec1<u8>);
 wrapper_from_to_try_from!(impl['a, T] TryFrom<&'a mut [T]> for Vec1<T> where T: Clone);
 wrapper_from_to_try_from!(impl Into + impl[T] TryFrom<VecDeque<T>> for Vec1<T>);
 
-#[cfg(feature="std")]
+#[cfg(feature = "std")]
 wrapper_from_to_try_from!(impl['a, T] TryFrom<Cow<'a, [T]>> for Vec1<T> where [T]: ToOwned<Owned=Vec<T>>);
 
-#[cfg(feature="std")]
+#[cfg(feature = "std")]
 impl TryFrom<CString> for Vec1<u8> {
     type Error = Size0Error;
 
@@ -675,7 +665,7 @@ impl TryFrom<CString> for Vec1<u8> {
     }
 }
 
-#[cfg(feature="std")]
+#[cfg(feature = "std")]
 impl io::Write for Vec1<u8> {
     #[inline]
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> {
@@ -723,15 +713,15 @@ mod test {
         // prevent a type from causing us to use the wrong type
         #[allow(unused_macros)]
         macro_rules! vec {
-            ($($any:tt)*) => (
+            ($($any:tt)*) => {
                 compile_error!("typo? vec! => vec1!")
-            );
+            };
         }
 
         #[test]
         fn new_vec1_macro() {
             let a = vec1![1u8, 10u8, 3u8];
-            assert_eq!(a, &[1,10,3]);
+            assert_eq!(a, &[1, 10, 3]);
 
             let a = vec1![40u8];
             assert_eq!(a, &[40]);
@@ -847,7 +837,7 @@ mod test {
 
         #[test]
         fn swap_remove() {
-            let mut a = vec1![1u8,2, 4];
+            let mut a = vec1![1u8, 2, 4];
             a.swap_remove(0).unwrap();
             assert_eq!(a, &[4u8, 2]);
             a.swap_remove(0).unwrap();
@@ -855,11 +845,10 @@ mod test {
             a.swap_remove(0).unwrap_err();
         }
 
-
         #[test]
         fn try_swap_remove() {
             #![allow(deprecated)]
-            let mut a = vec1![1u8,2, 4];
+            let mut a = vec1![1u8, 2, 4];
             a.try_swap_remove(0).unwrap();
             assert_eq!(a, &[4u8, 2]);
             a.try_swap_remove(0).unwrap();
@@ -892,7 +881,8 @@ mod test {
             catch_unwind(|| {
                 let mut a = vec1![9u8, 7, 3];
                 let _ = a.remove(200);
-            }).unwrap_err();
+            })
+            .unwrap_err();
         }
 
         #[test]
@@ -913,7 +903,8 @@ mod test {
             catch_unwind(|| {
                 let mut a = vec1![9u8, 7, 3];
                 let _ = a.remove(200);
-            }).unwrap_err();
+            })
+            .unwrap_err();
         }
 
         #[test]
@@ -968,7 +959,7 @@ mod test {
         #[test]
         fn dedup_by() {
             let mut a = vec1![1u8, 7u8, 12u8, 10u8];
-            a.dedup_by(|l,r| (*l%2==0) == (*r%2==0));
+            a.dedup_by(|l, r| (*l % 2 == 0) == (*r % 2 == 0));
             assert_eq!(a, &[1u8, 12u8]);
         }
 
@@ -1009,7 +1000,7 @@ mod test {
         }
 
         macro_rules! do_call_drain {
-            ($vec:ident.drain($from:expr, $to:expr, $incl:expr) => $iter:ident => $map:block) => ({
+            ($vec:ident.drain($from:expr, $to:expr, $incl:expr) => $iter:ident => $map:block) => {{
                 match ($from, $to) {
                     (Some(from), Some(to)) => {
                         if $incl {
@@ -1019,7 +1010,7 @@ mod test {
                             let $iter = $vec.drain(from..to);
                             $map
                         }
-                    },
+                    }
                     (None, Some(to)) => {
                         if $incl {
                             let $iter = $vec.drain(..=to);
@@ -1028,20 +1019,20 @@ mod test {
                             let $iter = $vec.drain(..to);
                             $map
                         }
-                    },
+                    }
                     (Some(from), None) => {
                         let $iter = $vec.drain(from..);
                         $map
-                    },
+                    }
                     (None, None) => {
                         let $iter = $vec.drain(..);
                         $map
                     }
                 }
-            });
+            }};
         }
 
-        proptest!{
+        proptest! {
 
             #[test]
             fn works_as_in_vec_except_if_draining_all(
@@ -1115,7 +1106,8 @@ mod test {
             catch_unwind(|| {
                 let mut v = vec1![1u8, 3, 4];
                 let _ = v.split_off(200);
-            }).unwrap_err();
+            })
+            .unwrap_err();
         }
 
         #[test]
@@ -1220,17 +1212,20 @@ mod test {
             assert!(catch_unwind(|| {
                 let mut a = vec1![1u8, 2];
                 let _ = a.splice(1..0, std::vec![]);
-            }).is_err());
+            })
+            .is_err());
 
             assert!(catch_unwind(|| {
                 let mut a = vec1![1u8, 2];
                 let _ = a.splice(3.., std::vec![]);
-            }).is_err());
+            })
+            .is_err());
 
             assert!(catch_unwind(|| {
                 let mut a = vec1![1u8, 2];
                 let _ = a.splice(..3, std::vec![]);
-            }).is_err());
+            })
+            .is_err());
         }
 
         #[test]
@@ -1260,7 +1255,7 @@ mod test {
         #[test]
         fn split_off_last() {
             let a = vec1![12u8, 33, 44];
-            let (heads, last) : (Vec<u8>, u8) = a.split_off_last();
+            let (heads, last): (Vec<u8>, u8) = a.split_off_last();
             assert_eq!(heads, &[12u8, 33]);
             assert_eq!(last, 44);
         }
@@ -1268,7 +1263,7 @@ mod test {
         #[test]
         fn split_off_first() {
             let a = vec1![12u8, 33, 45];
-            let (first, tail) : (u8, Vec<u8>) = a.split_off_first();
+            let (first, tail): (u8, Vec<u8>) = a.split_off_first();
             assert_eq!(tail, &[33u8, 45]);
             assert_eq!(first, 12);
         }
@@ -1405,7 +1400,7 @@ mod test {
                 let b = a.clone();
                 assert_eq!(a, b);
 
-                fn impls_eq<A: Eq>(){}
+                fn impls_eq<A: Eq>() {}
                 impls_eq::<Vec1<u8>>();
             }
         }
@@ -1429,8 +1424,8 @@ mod test {
         }
 
         mod TryFrom {
-            use std::{borrow::ToOwned, convert::TryFrom};
             use crate::*;
+            use std::{borrow::ToOwned, convert::TryFrom};
 
             #[test]
             fn from_slice_ref() {
@@ -1495,7 +1490,7 @@ mod test {
                 assert_eq!(vec, &[20u8; 10]);
             }
 
-            #[cfg(feature="std")]
+            #[cfg(feature = "std")]
             #[test]
             fn from_cstring() {
                 let cstring = CString::new("ABA").unwrap();
@@ -1506,7 +1501,7 @@ mod test {
                 Vec1::<u8>::try_from(cstring).unwrap_err();
             }
 
-            #[cfg(feature="std")]
+            #[cfg(feature = "std")]
             #[test]
             fn from_cow() {
                 let slice: &[u8] = &[12u8, 33];
@@ -1535,12 +1530,14 @@ mod test {
 
                 Vec1::<u8>::try_from(VecDeque::new()).unwrap_err();
             }
-
         }
 
         mod Hash {
-            use std::{collections::hash_map::DefaultHasher, hash::{Hash, Hasher}};
             use crate::*;
+            use std::{
+                collections::hash_map::DefaultHasher,
+                hash::{Hash, Hasher},
+            };
 
             #[test]
             fn hash() {
@@ -1640,7 +1637,7 @@ mod test {
             }
         }
 
-        mod  Ord {
+        mod Ord {
             use std::cmp::Ordering;
 
             #[test]
@@ -1680,7 +1677,7 @@ mod test {
             #[test]
             fn to_slice_mut() {
                 let vec = vec1![67u8, 73, 12];
-                let array: &mut [u8] =  &mut [67, 73, 12];
+                let array: &mut [u8] = &mut [67, 73, 12];
                 let array2: &mut [u8] = &mut [67, 73, 33];
                 assert_eq!(vec.eq(&array), true);
                 assert_eq!(vec.eq(&array2), false);
@@ -1718,7 +1715,6 @@ mod test {
         mod PartialOrd {
             use std::cmp::Ordering;
 
-
             #[test]
             fn with_self_kind() {
                 let a = vec1!["b"];
@@ -1727,7 +1723,7 @@ mod test {
             }
         }
 
-        #[cfg(feature="std")]
+        #[cfg(feature = "std")]
         mod Write {
             use std::io::Write;
 
@@ -1767,19 +1763,19 @@ mod test {
         }
     }
 
-    #[cfg(feature="std")]
+    #[cfg(feature = "std")]
     mod Cow {
 
         mod From {
-            use std::borrow::{Cow, ToOwned};
             use crate::*;
+            use std::borrow::{Cow, ToOwned};
 
             #[test]
             fn from_vec1() {
                 let vec = vec1!["ho".to_owned()];
                 match Cow::<'_, [String]>::from(vec.clone()) {
                     Cow::Owned(other) => assert_eq!(vec, other),
-                    Cow::Borrowed(_) => panic!("unexpected conversion") ,
+                    Cow::Borrowed(_) => panic!("unexpected conversion"),
                 }
             }
 
@@ -1799,7 +1795,7 @@ mod test {
         }
     }
 
-    #[cfg(feature="std")]
+    #[cfg(feature = "std")]
     mod CString {
         mod From {
             use std::{ffi::CString, num::NonZeroU8};
@@ -1854,7 +1850,7 @@ mod test {
         }
     }
 
-    #[cfg(feature="std")]
+    #[cfg(feature = "std")]
     mod Arc {
         mod From {
             use std::sync::Arc;
