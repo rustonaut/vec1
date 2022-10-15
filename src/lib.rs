@@ -144,8 +144,7 @@ pub struct Size0Error;
 
 impl fmt::Display for Size0Error {
     fn fmt(&self, fter: &mut fmt::Formatter) -> fmt::Result {
-        #[allow(deprecated)]
-        write!(fter, "Cannot produce a Vec1 with a length of zero.")
+        fter.write_str("Cannot produce a Vec1 with a length of zero.")
     }
 }
 

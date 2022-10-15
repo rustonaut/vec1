@@ -3,8 +3,10 @@
 
 ## Version 1.9.0 (pending)
 
-- Added missing LICENSE-MIT,LICENSE-APACHE files. Licensing
-  did not change.
+- Increased minimal rust version to 1.56.
+- Added missing LICENSE-MIT,LICENSE-APACHE files. Licensing did not change.
+- Added `from_vec_push` and `from_vec_insert` constructors.
+- Use edition 2021.
 
 ## Version 1.8.0 (21.04.2021)
 
