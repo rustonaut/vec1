@@ -111,7 +111,23 @@ macro_rules! shared_impl {
                     $name(vec)
                 }
 
-                /// Tries to create a instance from a normal `Vec<T>`.
+                /// Creates an instance from a normal `Vec<T>` pushing one additional element.
+                pub fn from_vec_push(mut vec: Vec<$item_ty>, last: $item_ty) -> Self {
+                    vec.push(last);
+                    $name($wrapped::from(vec))
+                }
+
+                /// Creates an instance from a normal `Vec<T>` inserting one additional element.
+                ///
+                /// # Panics
+                ///
+                /// Panics if `index > len`.
+                pub fn from_vec_insert(mut vec: Vec<$item_ty>, index: usize, item: $item_ty) -> Self {
+                    vec.insert(index, item);
+                    $name($wrapped::from(vec))
+                }
+
+                /// Tries to create an instance from a normal `Vec<T>`.
                 ///
                 /// # Errors
                 ///

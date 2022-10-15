@@ -1268,6 +1268,25 @@ mod test {
             assert_eq!(first, 12);
         }
 
+        #[test]
+        fn from_vec_push() {
+            assert_eq!(Vec1::from_vec_push(std::vec![], 1u8), vec1![1]);
+            assert_eq!(Vec1::from_vec_push(std::vec![1, 2], 3u8), vec1![1, 2, 3]);
+        }
+
+        #[test]
+        fn from_vec_insert() {
+            assert_eq!(Vec1::from_vec_insert(std::vec![], 0, 1u8), vec1![1]);
+            assert_eq!(
+                Vec1::from_vec_insert(std::vec![1, 3], 1, 2u8),
+                vec1![1, 2, 3]
+            );
+            assert!(catch_unwind(|| {
+                Vec1::from_vec_insert(std::vec![1, 3], 3, 2u8);
+            })
+            .is_err());
+        }
+
         mod AsMut {
             use crate::*;
 

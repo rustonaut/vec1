@@ -951,6 +951,30 @@ mod tests {
             assert_eq!((exp, 43), a.split_off_last());
         }
 
+        #[test]
+        fn from_vec_push() {
+            let got: SmallVec1<[u8; 4]> = SmallVec1::from_vec_push(std::vec![], 1u8);
+            let expected: SmallVec1<[u8; 4]> = smallvec1![1];
+            assert_eq!(got, expected);
+            let got: SmallVec1<[u8; 4]> = SmallVec1::from_vec_push(std::vec![1, 2], 3u8);
+            let expected: SmallVec1<[u8; 4]> = smallvec1![1, 2, 3];
+            assert_eq!(got, expected);
+        }
+
+        #[test]
+        fn from_vec_insert() {
+            let got: SmallVec1<[u8; 4]> = SmallVec1::from_vec_insert(std::vec![], 0, 1u8);
+            let expected: SmallVec1<[u8; 4]> = smallvec1![1];
+            assert_eq!(got, expected);
+            let got: SmallVec1<[u8; 4]> = SmallVec1::from_vec_insert(std::vec![1, 3], 1, 2u8);
+            let expected: SmallVec1<[u8; 4]> = smallvec1![1, 2, 3];
+            assert_eq!(got, expected);
+            assert!(catch_unwind(|| {
+                SmallVec1::<[u8; 4]>::from_vec_insert(std::vec![1, 3], 3, 2u8);
+            })
+            .is_err());
+        }
+
         #[cfg(feature = "serde")]
         mod serde {
             use super::super::super::*;
