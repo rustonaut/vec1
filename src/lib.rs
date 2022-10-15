@@ -687,6 +687,26 @@ impl io::Write for Vec1<u8> {
     }
 }
 
+impl<T, const N: usize> TryFrom<Vec1<T>> for [T; N] {
+    type Error = Vec1<T>;
+
+    fn try_from(value: Vec1<T>) -> StdResult<Self, Self::Error> {
+        <[T; N]>::try_from(value.0).map_err(|vec| Vec1(vec))
+    }
+}
+
+impl<T, const N: usize> TryFrom<[T; N]> for Vec1<T> {
+    type Error = [T; N];
+
+    fn try_from(value: [T; N]) -> StdResult<Self, Self::Error> {
+        if N == 0 {
+            Err(value)
+        } else {
+            Ok(Self(value.into()))
+        }
+    }
+}
+
 #[cfg(test)]
 mod test {
     #![allow(non_snake_case)]
@@ -1472,16 +1492,15 @@ mod test {
                 Vec1::<u8>::try_from("").unwrap_err();
             }
 
-            #[ignore = "not yet implemented, requires rustc 1.51"]
             #[test]
             fn from_array() {
-                // // we just test if there is a impl for a arbitrary len
-                // // which here is good enough but far from complete coverage!
-                // let array = [11u8; 100];
-                // let vec = Vec1::try_from(array).unwrap();
-                // assert_eq!(vec.iter().sum(), 110);
+                // we just test if there is a impl for a arbitrary len
+                // which here is good enough but far from complete coverage!
+                let array = [11; 100];
+                let vec = Vec1::try_from(array).unwrap();
+                assert_eq!(vec.iter().sum::<i32>(), 1100);
 
-                // Vec1::try_from([0u8;0]).unwrap_err()
+                Vec1::try_from([0u8; 0]).unwrap_err();
             }
 
             #[test]
@@ -1710,16 +1729,14 @@ mod test {
                 assert_eq!(vec.eq(&array2), false);
             }
 
-            #[ignore = "not yet implemented, requires rustc 1.49"]
             #[test]
             fn to_slice() {
-                // let vec = vec1![67u8, 73, 12];
-                // let array: &[u8] = &[67, 73, 12];
-                // let array2: &[u8] = &[67, 73, 33];
+                let vec = vec1![67u8, 73, 12];
+                let array: &[u8] = &[67, 73, 12];
+                let array2: &[u8] = &[67, 73, 33];
 
-                // //supposedly the relevant implementations landed on 1.48 but they did land on 1.49!
-                // assert_eq!(<Vec1<u8> as PartialEq<[u8]>>::eq(&vec, array), true);
-                // assert_eq!(<Vec1<u8> as PartialEq<[u8]>>::eq(&vec, array2), false);
+                assert_eq!(<Vec1<u8> as PartialEq<[u8]>>::eq(&vec, array), true);
+                assert_eq!(<Vec1<u8> as PartialEq<[u8]>>::eq(&vec, array2), false);
             }
 
             #[test]
@@ -1938,13 +1955,11 @@ mod test {
 
         mod TryFrom {
 
-            #[ignore = "not yet implemented, requires rustc 1.51"]
             #[test]
             fn from_vec1() {
-                // let v = vec1![1u8, 10, 23];
-
-                // let a = <[u8; 3]>::try_from(v).unwrap();
-                // <[u8; 3]>::try_from(vec1![1u8, 2]).unwrap_err();
+                let v = vec1![1u8, 10, 23];
+                let _ = <[u8; 3]>::try_from(v).unwrap();
+                <[u8; 3]>::try_from(vec1![1u8, 2]).unwrap_err();
             }
         }
     }

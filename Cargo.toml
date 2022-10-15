@@ -50,6 +50,7 @@ serde = { version = "1.0", optional = true, features = ["derive"], default-featu
 version = "1.6.1"
 package = "smallvec"
 optional = true
+features = ["const_generics"]
 
 
 [dev-dependencies]
