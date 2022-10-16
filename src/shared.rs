@@ -482,6 +482,38 @@ macro_rules! shared_impl {
                     self.into_vec().leak()
                 }
 
+                /// Like [`Iterator::reduce()`] but does not return an option.
+                ///
+                /// This is roughly equivalent with `.into_iter().reduce(f).unwrap()`.
+                pub fn reduce(self, f: impl FnMut($item_ty, $item_ty) -> $item_ty) -> $item_ty {
+                    //UNWRAP_SAFE: len is at least 1
+                    self.into_iter().reduce(f).unwrap()
+                }
+
+                /// Like [`Iterator::reduce()`] but does not return an option.
+                ///
+                /// *Hint: Because of the reduction function returning a reference
+                /// this method is (in general) only suitable for selecting exactly
+                /// one element from the vector.*
+                ///
+                /// This is roughly equivalent with `.iter().reduce(f).unwrap()`.
+                pub fn reduce_ref<'a>(&'a self, f: impl FnMut(&'a $item_ty, &'a $item_ty) -> &'a $item_ty) -> &'a $item_ty {
+                    //UNWRAP_SAFE: len is at least 1
+                    self.iter().reduce(f).unwrap()
+                }
+
+                /// Like [`Iterator::reduce()`] but does not return an option.
+                ///
+                /// *Hint: Because of the reduction function returning a reference
+                /// this method is (in general) only suitable for selecting exactly
+                /// one element from the vector.*
+                ///
+                /// This is roughly equivalent with `.iter_mut().reduce(f).unwrap()`.
+                pub fn reduce_mut<'a>(&'a mut self, f: impl FnMut(&'a mut $item_ty, &'a mut $item_ty) -> &'a mut $item_ty) -> &'a mut $item_ty {
+                    //UNWRAP_SAFE: len is at least 1
+                    self.iter_mut().reduce(f).unwrap()
+                }
+
             }
 
             // methods in Vec not in &[] which can be directly exposed

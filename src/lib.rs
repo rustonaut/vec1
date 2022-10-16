@@ -1306,6 +1306,26 @@ mod test {
             .is_err());
         }
 
+        #[test]
+        fn reduce() {
+            assert_eq!(vec1![1u8, 2, 4, 3].reduce(std::cmp::max), 4);
+            assert_eq!(vec1![1u8, 2, 2, 3].reduce(|a, b| a + b), 8);
+        }
+
+        #[test]
+        fn reduce_ref() {
+            let a = vec1![std::cell::Cell::new(4)];
+            a.reduce_ref(std::cmp::max).set(44);
+            assert_eq!(a, vec1![std::cell::Cell::new(44)]);
+        }
+
+        #[test]
+        fn reduce_mut() {
+            let mut a = vec1![1u8, 2, 4, 3];
+            *a.reduce_mut(std::cmp::max) *= 2;
+            assert_eq!(a, vec1![1u8, 2, 8, 3]);
+        }
+
         mod AsMut {
             use crate::*;
 
