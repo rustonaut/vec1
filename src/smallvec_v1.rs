@@ -38,7 +38,7 @@ macro_rules! __smallvec1_macro_v1 {
         compile_error!("SmallVec1 needs at least 1 element")
     );
     ($first:expr $(, $item:expr)* , ) => (
-        $crate::smallvec1!($first $(, $item)*)
+        $crate::smallvec_v1::smallvec1!($first $(, $item)*)
     );
     ($first:expr $(, $item:expr)* ) => ({
         let smallvec = $crate::smallvec_v1_::smallvec!($first $(, $item)*);
@@ -990,5 +990,14 @@ mod tests {
                 serde_json::from_str::<SmallVec1<[u8; 8]>>(&json_str).unwrap_err();
             }
         }
+    }
+
+    #[test]
+    fn smallvec1_macro() {
+        use super::{smallvec1, SmallVec1};
+        let _: SmallVec1<[u8; 2]> = smallvec1![1];
+        let _: SmallVec1<[u8; 2]> = smallvec1![1,];
+        let _: SmallVec1<[u8; 2]> = smallvec1![1, 2];
+        let _: SmallVec1<[u8; 2]> = smallvec1![1, 2,];
     }
 }
