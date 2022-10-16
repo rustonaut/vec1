@@ -38,7 +38,6 @@ smallvec-v1 = ["smallvec_v1_"]
 # Enables the smallvec-v1/write feature
 smallvec-v1-write = ["std", "smallvec_v1_/write"]
 
-
 [dependencies]
 # Is a feature!
 serde = { version = "1.0", optional = true, features = ["derive"], default-features=false }
@@ -52,7 +51,9 @@ package = "smallvec"
 optional = true
 features = ["const_generics"]
 
-
 [dev-dependencies]
 serde_json = "1.0"
 proptest = "1.0"
+
+[package.metadata.docs.rs]
+all-features = true
