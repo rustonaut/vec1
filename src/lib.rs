@@ -556,7 +556,7 @@ where
     T: PartialEq<T>,
 {
     fn eq(&self, other: &Vec1<T>) -> bool {
-        (&**self).eq(&**other)
+        (**self).eq(&**other)
     }
 }
 
@@ -565,7 +565,7 @@ where
     T: PartialEq<T>,
 {
     fn eq(&self, other: &Vec1<T>) -> bool {
-        (&**self).eq(&**other)
+        (**self).eq(&**other)
     }
 }
 
@@ -691,7 +691,7 @@ impl<T, const N: usize> TryFrom<Vec1<T>> for [T; N] {
     type Error = Vec1<T>;
 
     fn try_from(value: Vec1<T>) -> StdResult<Self, Self::Error> {
-        <[T; N]>::try_from(value.0).map_err(|vec| Vec1(vec))
+        <[T; N]>::try_from(value.0).map_err(Vec1)
     }
 }
 

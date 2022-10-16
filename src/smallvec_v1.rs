@@ -596,19 +596,19 @@ mod tests {
             #[test]
             fn boxed_slice_from_smallvec1() {
                 let vec: SmallVec1<[u8; 4]> = smallvec1![1, 3, 2, 4, 5];
-                Box::<[u8]>::from(vec);
+                let _ = Box::<[u8]>::from(vec);
             }
 
             #[test]
             fn vec_from_smallvec1() {
                 let vec: SmallVec1<[u8; 4]> = smallvec1![1, 3, 2, 4];
-                Vec::<u8>::from(vec);
+                let _ = Vec::<u8>::from(vec);
             }
 
             #[test]
             fn smallvec_from_smallvec1() {
                 let vec: SmallVec1<[u8; 4]> = smallvec1![1, 3, 2, 4];
-                SmallVec::<[u8; 4]>::from(vec);
+                let _ = SmallVec::<[u8; 4]>::from(vec);
             }
         }
 

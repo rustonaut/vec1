@@ -99,6 +99,7 @@ macro_rules! shared_impl {
             {
                 /// Creates a new instance containing a single element.
                 pub fn new(first: $item_ty) -> Self {
+                    #![allow(clippy::vec_init_then_push)]
                     let mut inner = $wrapped::new();
                     inner.push(first);
                     $name(inner)

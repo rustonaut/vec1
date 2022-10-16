@@ -1,7 +1,7 @@
 
 # Change Log
 
-## Version 1.9.0 (pending)
+## Version 1.9.0 (16.10.2022)
 
 - Increased minimal rust version to 1.56.
 - Added missing LICENSE-MIT,LICENSE-APACHE files. Licensing did not change.
