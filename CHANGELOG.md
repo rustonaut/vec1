@@ -3,7 +3,10 @@
 
 ## Version 1.10.0 (pending)
 
+- Increased minimal rust version to 1.57.
 - Added a length>0 aware `reduce`, `reduce_ref`, `reduce_mut`.
+- Added `smallvec1_inline!`.
+- Added `SmallVec1::from_array_const()`.
 
 ## Version 1.9.0 (16.10.2022)
 

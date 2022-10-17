@@ -26,6 +26,7 @@ use std::io;
 use smallvec::*;
 use smallvec_v1_ as smallvec;
 
+pub use crate::__smallvec1_inline_macro_v1 as smallvec1_inline;
 pub use crate::__smallvec1_macro_v1 as smallvec1;
 
 use smallvec::Drain;
@@ -43,6 +44,20 @@ macro_rules! __smallvec1_macro_v1 {
     ($first:expr $(, $item:expr)* ) => ({
         let smallvec = $crate::smallvec_v1_::smallvec!($first $(, $item)*);
         $crate::smallvec_v1::SmallVec1::try_from_smallvec(smallvec).unwrap()
+    });
+}
+
+#[doc(hidden)]
+#[macro_export]
+macro_rules! __smallvec1_inline_macro_v1 {
+    () => (
+        compile_error!("SmallVec1 needs at least 1 element")
+    );
+    ($first:expr $(, $item:expr)* , ) => (
+        $crate::smallvec_v1::smallvec1_inline!($first $(, $item)*)
+    );
+    ($first:expr $(, $item:expr)* ) => ({
+        $crate::smallvec_v1::SmallVec1::from_array_const([$first $(, $item)*])
     });
 }
 
@@ -177,6 +192,20 @@ where
     }
 }
 
+impl<T, const N: usize> SmallVec1<[T; N]> {
+    /// Creates a new `SmallVec1` from an array.
+    ///
+    /// # Panics
+    ///
+    /// This will panic if N==0.
+    pub const fn from_array_const(val: [T; N]) -> Self {
+        if N == 0 {
+            panic!("Empty arrays can not be used for creating a SmallVec1");
+        }
+        Self(SmallVec::from_const(val))
+    }
+}
+
 impl_wrapper! {
     base_bounds_macro = A: Array,
     impl<A> SmallVec1<A> {
@@ -201,6 +230,7 @@ where
     }
 }
 
+///FIXME(v2.0) use `From` and panic on `N==0` instead.
 impl<T, const N: usize> TryFrom<[T; N]> for SmallVec1<[T; N]> {
     type Error = Size0Error;
     fn try_from(vec: [T; N]) -> Result<Self, Size0Error> {
@@ -992,12 +1022,23 @@ mod tests {
         }
     }
 
-    #[test]
-    fn smallvec1_macro() {
-        use super::{smallvec1, SmallVec1};
-        let _: SmallVec1<[u8; 2]> = smallvec1![1];
-        let _: SmallVec1<[u8; 2]> = smallvec1![1,];
-        let _: SmallVec1<[u8; 2]> = smallvec1![1, 2];
-        let _: SmallVec1<[u8; 2]> = smallvec1![1, 2,];
+    mod macros {
+        use super::super::{smallvec1, smallvec1_inline, SmallVec1};
+
+        #[test]
+        fn smallvec1() {
+            let _: SmallVec1<[u8; 2]> = smallvec1![1];
+            let _: SmallVec1<[u8; 2]> = smallvec1![1,];
+            let _: SmallVec1<[u8; 2]> = smallvec1![1, 2];
+            let _: SmallVec1<[u8; 2]> = smallvec1![1, 2,];
+        }
+
+        #[test]
+        fn smallvec1_inline() {
+            assert_eq!(smallvec1_inline![1].capacity(), 1);
+            assert_eq!(smallvec1_inline![1,].capacity(), 1);
+            assert_eq!(smallvec1_inline![1, 2].capacity(), 2);
+            assert_eq!(smallvec1_inline![1, 2,].capacity(), 2);
+        }
     }
 }
