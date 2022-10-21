@@ -1,7 +1,7 @@
 
 # Change Log
 
-## Version 1.10.0 (pending)
+## Version 1.10.0 (21.10.2022)
 
 - Increased minimal rust version to 1.57.
 - Added a length>0 aware `reduce`, `reduce_ref`, `reduce_mut`.
