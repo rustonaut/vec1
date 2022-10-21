@@ -38,7 +38,7 @@ fn greet(names: Vec1<&str>) {
 Support for `serde::{Serialize, Deserialize}`
 -------------
 
-The `Vec1` type supports both of [`serde`](https://serde.rs/)'s `Serialize` and 
+The `Vec1` type supports both of [`serde`](https://serde.rs/)'s `Serialize` and
 `Deserialize` traits, but this feature is only enabled when the `"serde"` feature
 flag is specified in your project's `Cargo.toml` file:
 
@@ -48,6 +48,20 @@ flag is specified in your project's `Cargo.toml` file:
 [dependencies]
 vec1 = { version = "...", features = ["serde"] }
 ```
+
+Building docs like on docs.rs
+-------------
+
+To build docs which document all features and contains hints
+which functions require which features use following command:
+
+```sh
+RUSTDOCFLAGS="--cfg docs" cargo +nightly doc --all-features
+```
+
+This will document all features and enable the unstable
+nightly only `doc_auto_cfg` feature.
+
 
 License
 --------

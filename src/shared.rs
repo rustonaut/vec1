@@ -485,6 +485,17 @@ macro_rules! shared_impl {
                 /// Like [`Iterator::reduce()`] but does not return an option.
                 ///
                 /// This is roughly equivalent with `.into_iter().reduce(f).unwrap()`.
+                ///
+                /// # Example
+                ///
+                /// ```
+                /// # use vec1::vec1;
+                /// assert_eq!(vec1![1,2,4,3].reduce(std::cmp::max), 4)
+                /// ```
+                ///
+                /// *Be aware that `reduce` consumes the vector, to get a reference
+                /// use either `reduce_ref` or `reduce_mut`.*
+                ///
                 pub fn reduce(self, f: impl FnMut($item_ty, $item_ty) -> $item_ty) -> $item_ty {
                     //UNWRAP_SAFE: len is at least 1
                     self.into_iter().reduce(f).unwrap()
@@ -492,11 +503,19 @@ macro_rules! shared_impl {
 
                 /// Like [`Iterator::reduce()`] but does not return an option.
                 ///
+                /// This is roughly equivalent with `.iter().reduce(f).unwrap()`.
+                ///
                 /// *Hint: Because of the reduction function returning a reference
                 /// this method is (in general) only suitable for selecting exactly
                 /// one element from the vector.*
                 ///
-                /// This is roughly equivalent with `.iter().reduce(f).unwrap()`.
+                /// # Example
+                ///
+                /// ```
+                /// # use vec1::vec1;
+                /// assert_eq!(vec1![1,2,4,3].reduce_ref(std::cmp::max), &4)
+                /// ```
+                ///
                 pub fn reduce_ref<'a>(&'a self, f: impl FnMut(&'a $item_ty, &'a $item_ty) -> &'a $item_ty) -> &'a $item_ty {
                     //UNWRAP_SAFE: len is at least 1
                     self.iter().reduce(f).unwrap()
@@ -504,11 +523,19 @@ macro_rules! shared_impl {
 
                 /// Like [`Iterator::reduce()`] but does not return an option.
                 ///
+                /// This is roughly equivalent with `.iter_mut().reduce(f).unwrap()`.
+                ///
                 /// *Hint: Because of the reduction function returning a reference
                 /// this method is (in general) only suitable for selecting exactly
                 /// one element from the vector.*
                 ///
-                /// This is roughly equivalent with `.iter_mut().reduce(f).unwrap()`.
+                /// # Example
+                ///
+                /// ```
+                /// # use vec1::vec1;
+                /// assert_eq!(vec1![1,2,4,3].reduce_mut(std::cmp::max), &mut 4)
+                /// ```
+                ///
                 pub fn reduce_mut<'a>(&'a mut self, f: impl FnMut(&'a mut $item_ty, &'a mut $item_ty) -> &'a mut $item_ty) -> &'a mut $item_ty {
                     //UNWRAP_SAFE: len is at least 1
                     self.iter_mut().reduce(f).unwrap()

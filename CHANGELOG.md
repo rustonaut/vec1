@@ -1,6 +1,10 @@
 
 # Change Log
 
+## Version 1.10.1 (21.10.2022)
+
+- Improved documentation by using `doc_auto_cfg` on docs.rs.
+
 ## Version 1.10.0 (21.10.2022)
 
 - Increased minimal rust version to 1.57.

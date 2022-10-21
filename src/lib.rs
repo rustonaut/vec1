@@ -100,6 +100,7 @@
 //! I do my best so that I will never have to release a major version update for this crate as
 //! this would lead to API incompatibilities for other crates using this crate in their public API.
 #![no_std]
+#![cfg_attr(docs, feature(doc_auto_cfg))]
 
 extern crate alloc;
 
