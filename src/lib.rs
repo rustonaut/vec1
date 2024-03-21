@@ -279,9 +279,9 @@ impl<T> Vec1<T> {
     ///
     /// The benefit to this compared to `Iterator::map` is that it's known
     /// that the length will still be at least 1 when creating the new `Vec1`.
-    pub fn mapped_ref<F, N>(&self, map_fn: F) -> Vec1<N>
+    pub fn mapped_ref<'a, F, N>(&'a self, map_fn: F) -> Vec1<N>
     where
-        F: FnMut(&T) -> N,
+        F: FnMut(&'a T) -> N,
     {
         Vec1(self.iter().map(map_fn).collect::<Vec<_>>())
     }
@@ -290,9 +290,9 @@ impl<T> Vec1<T> {
     ///
     /// The benefit to this compared to `Iterator::map` is that it's known
     /// that the length will still be at least 1 when creating the new `Vec1`.
-    pub fn mapped_mut<F, N>(&mut self, map_fn: F) -> Vec1<N>
+    pub fn mapped_mut<'a, F, N>(&'a mut self, map_fn: F) -> Vec1<N>
     where
-        F: FnMut(&mut T) -> N,
+        F: FnMut(&'a mut T) -> N,
     {
         Vec1(self.iter_mut().map(map_fn).collect::<Vec<_>>())
     }
