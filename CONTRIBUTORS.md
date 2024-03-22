@@ -6,6 +6,10 @@
 Names sorted alphabetically by github nickname.
 Contributions ordered by PR number.
 
+## Ben Schulz  @benschulz
+
+- [Relax lifetime constraints on mapped_ref and mapped_mut](https://github.com/rustonaut/vec1/pull/30)
+
 ## eignnx @eignnx
 
 - [mention serde support in README](https://github.com/rustonaut/vec1/pull/16)
