@@ -23,6 +23,8 @@ use crate::Size0Error;
 #[cfg(feature = "smallvec-v1-write")]
 use std::io;
 
+use alloc::boxed::Box;
+use alloc::vec::Vec;
 use smallvec::*;
 use smallvec_v1_ as smallvec;
 
@@ -30,7 +32,6 @@ pub use crate::__smallvec1_inline_macro_v1 as smallvec1_inline;
 pub use crate::__smallvec1_macro_v1 as smallvec1;
 
 use smallvec::Drain;
-shared_impl! {@IMPORTS}
 
 #[doc(hidden)]
 #[macro_export]

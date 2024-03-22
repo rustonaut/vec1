@@ -65,19 +65,6 @@ macro_rules! impl_wrapper {
 }
 
 macro_rules! shared_impl {
-    //Workaround for limitations of rustdoc
-    (@IMPORTS) => (
-        use core::{
-            borrow::{Borrow, BorrowMut},
-            cmp::{Eq, Ord, Ordering, PartialEq},
-            convert::TryFrom,
-            fmt::{self, Debug},
-            hash::{Hash, Hasher},
-            ops::{Deref, DerefMut, Index, IndexMut, RangeBounds},
-            slice::SliceIndex,
-        };
-        use alloc::{vec::Vec, boxed::Box};
-    );
     (
         base_bounds_macro = $($tb:ident : $trait:ident)?,
         item_ty_macro = $item_ty:ty,
@@ -89,10 +76,18 @@ macro_rules! shared_impl {
         where
             $($tb : $trait,)?;
 
-        // FIXME: This is currently not possible as this will cause the
-        //        methods not to be documented by rustdoc:
-        //        https://github.com/rust-lang/rust/issues/83026
-        // const _: () = {
+        const _: () = {
+            use core::{
+                borrow::{Borrow, BorrowMut},
+                cmp::{Eq, Ord, Ordering, PartialEq},
+                convert::TryFrom,
+                fmt::{self, Debug},
+                hash::{Hash, Hasher},
+                ops::{Deref, DerefMut, Index, IndexMut, RangeBounds},
+                slice::SliceIndex,
+            };
+            use alloc::{vec::Vec, boxed::Box};
+
             impl<$t> $name<$t>
             where
                 $($tb : $trait,)?
@@ -962,7 +957,7 @@ macro_rules! shared_impl {
                     }
                 }
             };
-        // };
+        };
     );
 }
 

@@ -118,11 +118,19 @@ mod shared;
 pub mod smallvec_v1;
 
 use core::{
+    fmt,
     iter::{DoubleEndedIterator, ExactSizeIterator, Extend, IntoIterator, Peekable},
+    ops::RangeBounds,
     result::Result as StdResult,
 };
 
-use alloc::{collections::BinaryHeap, collections::VecDeque, rc::Rc, string::String, vec};
+use alloc::{
+    boxed::Box,
+    collections::{BinaryHeap, VecDeque},
+    rc::Rc,
+    string::String,
+    vec::{self, Vec},
+};
 
 #[cfg(feature = "std")]
 use std::{
@@ -137,7 +145,6 @@ use std::{
 use std::error::Error;
 
 use alloc::vec::Drain;
-shared_impl! {@IMPORTS}
 
 /// Error returned by operations which would cause `Vec1` to have a length of 0.
 #[derive(Debug, Hash, Eq, PartialEq, Copy, Clone)]
@@ -1373,6 +1380,8 @@ mod test {
         }
 
         mod Borrow {
+            use core::borrow::Borrow as _;
+
             use crate::*;
 
             #[test]
@@ -1391,6 +1400,8 @@ mod test {
         }
 
         mod BorrowMut {
+            use core::borrow::BorrowMut as _;
+
             use crate::*;
 
             #[test]
@@ -1429,6 +1440,8 @@ mod test {
         }
 
         mod Deref {
+            use core::ops::Deref;
+
             use crate::*;
 
             #[test]
@@ -1440,6 +1453,8 @@ mod test {
         }
 
         mod DerefMut {
+            use core::ops::DerefMut;
+
             use crate::*;
 
             #[test]
