@@ -3,6 +3,7 @@
 
 ## Version 1.11.0 (pending)
 
+- Increased minimal rust version to 1.70.
 - Relax lifetime constraints on mapped_ref and mapped_mut
 
 ## Version 1.10.1 (21.10.2022)
