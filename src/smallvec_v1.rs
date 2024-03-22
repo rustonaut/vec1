@@ -215,7 +215,7 @@ impl_wrapper! {
         fn grow(&mut self, len: usize) -> ();
         fn try_reserve(&mut self, additional: usize) -> Result<(), CollectionAllocErr>;
         fn try_reserve_exact(&mut self, additional: usize) -> Result<(), CollectionAllocErr>;
-        fn try_grow(&mut self, len: usize) -> Result<(), CollectionAllocErr>
+        fn try_grow(&mut self, len: usize) -> Result<(), CollectionAllocErr>;
     }
 }
 

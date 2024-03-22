@@ -120,13 +120,14 @@ pub mod smallvec_v1;
 use core::{
     fmt,
     iter::{DoubleEndedIterator, ExactSizeIterator, Extend, IntoIterator, Peekable},
+    mem::MaybeUninit,
     ops::RangeBounds,
     result::Result as StdResult,
 };
 
 use alloc::{
     boxed::Box,
-    collections::{BinaryHeap, VecDeque},
+    collections::{BinaryHeap, TryReserveError, VecDeque},
     rc::Rc,
     string::String,
     vec::{self, Vec},
@@ -476,6 +477,28 @@ impl<T> Vec1<T> {
             let vec_splice = self.0.splice(range, replace_with);
             Ok(Splice { vec_splice })
         }
+    }
+}
+
+impl_wrapper! {
+    base_bounds_macro = ,
+    impl<T> Vec1<T> {
+        fn try_reserve(&mut self, additional: usize) -> Result<(), TryReserveError>;
+        fn try_reserve_exact(&mut self, additional: usize) -> Result<(), TryReserveError>;
+        fn shrink_to(&mut self, min_capacity: usize) -> ();
+        fn spare_capacity_mut(&mut self) -> &mut [MaybeUninit<T>];
+    }
+}
+
+impl<T> Vec1<T>
+where
+    T: Clone,
+{
+    pub fn extend_from_within<R>(&mut self, src: R)
+    where
+        R: RangeBounds<usize>,
+    {
+        self.0.extend_from_within(src);
     }
 }
 
@@ -1332,6 +1355,48 @@ mod test {
             let mut a = vec1![1u8, 2, 4, 3];
             *a.reduce_mut(std::cmp::max) *= 2;
             assert_eq!(a, vec1![1u8, 2, 8, 3]);
+        }
+
+        #[test]
+        fn try_reserve() {
+            let mut a = vec1![1u8, 2, 4, 3];
+            a.try_reserve(100).unwrap();
+            assert!(a.capacity() > 100);
+            a.try_reserve(usize::MAX).unwrap_err();
+        }
+
+        #[test]
+        fn try_reserve_exact() {
+            let mut a = vec1![1u8, 2, 4, 3];
+            a.try_reserve_exact(124).unwrap();
+            assert_eq!(a.capacity(), 128);
+            a.try_reserve(usize::MAX).unwrap_err();
+        }
+
+        #[test]
+        fn shrink_to() {
+            let mut a = Vec1::with_capacity(1, 16);
+            a.extend([2, 3, 4]);
+            a.shrink_to(16);
+            assert_eq!(a.capacity(), 16);
+            a.shrink_to(4);
+            assert_eq!(a.capacity(), 4);
+            a.shrink_to(1);
+            assert_eq!(a.capacity(), 4);
+        }
+
+        #[test]
+        fn spare_capacity_mut() {
+            let mut a = Vec1::with_capacity(1, 16);
+            a.extend([2, 3, 4]);
+            assert_eq!(a.spare_capacity_mut().len(), 12);
+        }
+
+        #[test]
+        fn extend_from_within() {
+            let mut a = vec1!["a", "b", "c", "d"];
+            a.extend_from_within(1..3);
+            assert_eq!(a, ["a", "b", "c", "d", "b", "c"]);
         }
 
         mod AsMut {

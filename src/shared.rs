@@ -46,7 +46,7 @@ macro_rules! impl_wrapper {
     (
         base_bounds_macro = $($tb:ident : $trait:ident)?,
         impl <$A:ident> $ty_name:ident<$A_:ident> {
-            $(fn $fn_name:ident(&$($m:ident)* $(, $param:ident: $tp:ty)*) -> $rt:ty);*
+            $(fn $fn_name:ident(&$($m:ident)* $(, $param:ident: $tp:ty)*) -> $rt:ty ;)*
         }
     ) => (
             impl<$A> $ty_name<$A>
@@ -300,6 +300,15 @@ macro_rules! shared_impl {
                 /// The moment the last element would be removed this will instead fail, not removing
                 /// the element. **All but the last element will have been removed anyway.**
                 ///
+                /// # Panic Behavior
+                ///
+                /// The panic behavior is for now unspecified and might change without a
+                /// major version release.
+                ///
+                /// The current implementation does only delete non-retained elements at
+                /// the end of the `retain` function call. This might change in the future
+                /// matching `std`s behavior.
+                ///
                 /// # Error
                 ///
                 /// If the last element would be removed instead of removing it a `Size0Error` is
@@ -323,8 +332,54 @@ macro_rules! shared_impl {
                 where
                     F: FnMut(&$item_ty) -> bool
                 {
-                    // code is based on the code in the standard library,
-                    // given a local instal of rust v1.50.0 source documentation in rustup:
+                    self.retain_mut(|e| f(e))
+                }
+
+                /// Removes all elements except the ones which the predicate says need to be retained.
+                ///
+                /// The moment the last element would be removed this will instead fail, not removing
+                /// the element. **All other non retained elements will still be removed.** This means
+                /// you have to be more careful compared to `Vec::retain_mut` about how you modify
+                /// non retained elements in the closure.
+                ///
+                /// # Panic Behavior
+                ///
+                /// The panic behavior is for now unspecified and might change without a
+                /// major version release.
+                ///
+                /// The current implementation does only delete non-retained elements at
+                /// the end of the `retain` function call. This might change in the future
+                /// matching `std`s behavior.
+                ///
+                /// # Error
+                ///
+                /// If the last element would be removed instead of removing it a `Size0Error` is
+                /// returned.
+                ///
+                /// # Example
+                ///
+                /// Is for `Vec1` but similar code works with `SmallVec1`, too.
+                ///
+                /// ```
+                /// # use vec1::vec1;
+                ///
+                /// let mut vec = vec1![1, 7, 8, 9, 10];
+                /// vec.retain_mut(|v| {
+                ///     *v += 2;
+                ///     *v % 2 == 1
+                /// }).unwrap();
+                /// assert_eq!(vec, vec1![3, 9, 11]);
+                /// let Size0Error = vec.retain_mut(|_| false).unwrap_err();
+                /// assert_eq!(vec.len(), 1);
+                /// assert_eq!(vec.last(), &11);
+                /// ```
+                pub fn retain_mut<F>(&mut self, mut f: F) -> Result<(), Size0Error>
+                where
+                    F: FnMut(&mut $item_ty) -> bool
+                {
+                    // Code is based on the code in the standard library, but not the newest version
+                    // as the newest version uses unsafe optimizations.
+                    // Given a local instal of rust v1.50.0 source documentation in rustup:
                     // <path-to-rustup-rust-v1.50.0-toolchain-with-source-doc>/share/doc/rust/html/src/alloc/vec.rs.html#1314-1334
                     let len = self.len();
                     let mut del = 0;
@@ -332,7 +387,7 @@ macro_rules! shared_impl {
                         let v = &mut **self;
 
                         for i in 0..len {
-                            if !f(&v[i]) {
+                            if !f(&mut v[i]) {
                                 del += 1;
                             } else if del > 0 {
                                 v.swap(i - del, i);
@@ -551,7 +606,7 @@ macro_rules! shared_impl {
                     fn insert(&mut self, idx: usize, val: $item_ty) -> ();
                     fn len(&self) -> usize;
                     fn capacity(&self) -> usize;
-                    fn as_slice(&self) -> &[$item_ty]
+                    fn as_slice(&self) -> &[$item_ty];
                 }
             }
 
