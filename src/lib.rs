@@ -360,9 +360,9 @@ impl<T> Vec1<T> {
     /// Once any call to `map_fn` returns a error that error is directly
     /// returned by this method.
     ///
-    pub fn try_mapped_ref<F, N, E>(&self, map_fn: F) -> Result<Vec1<N>, E>
+    pub fn try_mapped_ref<'a, F, N, E>(&'a self, map_fn: F) -> Result<Vec1<N>, E>
     where
-        F: FnMut(&T) -> Result<N, E>,
+        F: FnMut(&'a T) -> Result<N, E>,
     {
         let mut map_fn = map_fn;
         let mut out = Vec::with_capacity(self.len());
@@ -383,9 +383,9 @@ impl<T> Vec1<T> {
     /// Once any call to `map_fn` returns a error that error is directly
     /// returned by this method.
     ///
-    pub fn try_mapped_mut<F, N, E>(&mut self, map_fn: F) -> Result<Vec1<N>, E>
+    pub fn try_mapped_mut<'a, F, N, E>(&'a mut self, map_fn: F) -> Result<Vec1<N>, E>
     where
-        F: FnMut(&mut T) -> Result<N, E>,
+        F: FnMut(&'a mut T) -> Result<N, E>,
     {
         let mut map_fn = map_fn;
         let mut out = Vec::with_capacity(self.len());
@@ -732,6 +732,36 @@ impl<T, const N: usize> TryFrom<[T; N]> for Vec1<T> {
     fn try_from(value: [T; N]) -> StdResult<Self, Self::Error> {
         if N == 0 {
             Err(value)
+        } else {
+            Ok(Self(value.into()))
+        }
+    }
+}
+
+impl<T, const N: usize> TryFrom<&[T; N]> for Vec1<T>
+where
+    T: Clone,
+{
+    type Error = Size0Error;
+
+    fn try_from(value: &[T; N]) -> StdResult<Self, Self::Error> {
+        if N == 0 {
+            Err(Size0Error)
+        } else {
+            Ok(Self(value.into()))
+        }
+    }
+}
+
+impl<T, const N: usize> TryFrom<&mut [T; N]> for Vec1<T>
+where
+    T: Clone,
+{
+    type Error = Size0Error;
+
+    fn try_from(value: &mut [T; N]) -> StdResult<Self, Self::Error> {
+        if N == 0 {
+            Err(Size0Error)
         } else {
             Ok(Self(value.into()))
         }
