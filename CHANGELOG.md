@@ -1,10 +1,26 @@
 
 # Change Log
 
-## Version 1.11.0 (pending)
+## Version 1.11.0 (23.03.2024)
 
 - Increased minimal rust version to 1.74.
-- Relax lifetime constraints on mapped_ref and mapped_mut
+- Relax lifetime constraints on `{try_,}mapped_{ref,mut}`
+- Added new proxy functions for `Vec`
+  - `try_reserve`
+  - `try_reserve_exact`
+  - `shrink_to`
+  - `spare_capacity_mut`
+  - `extend_from_within`
+  - `retain_mut`
+- Added missing proxy trait impls
+  - `impl<T, const N: usize> TryFrom<Vec1<T>> for Box<[T; N]>`
+  - `impl<T, const N: usize> TryFrom<&[T; N]> for Vec1<T> where T: Clone`
+  - `impl<T, const N: usize> TryFrom<&mut [T; N]> for Vec1<T> where T: Clone`
+- Removed no longer needed import/impl workaround.
+- Added multiple `_nonzero` implementations
+  - `truncate_nonzero`
+  - `resize_with_nonzero`
+  - `resize_nonzero`
 
 ## Version 1.10.1 (21.10.2022)
 
