@@ -646,6 +646,14 @@ impl From<Vec1<NonZeroU8>> for CString {
     }
 }
 
+impl<T, const N: usize> TryFrom<Vec1<T>> for Box<[T; N]> {
+    type Error = Vec1<T>;
+
+    fn try_from(vec: Vec1<T>) -> Result<Self, Self::Error> {
+        vec.0.try_into().map_err(Vec1)
+    }
+}
+
 macro_rules! wrapper_from_to_try_from {
     (impl Into + impl[$($tv:tt)*] TryFrom<$tf:ty> for Vec1<$et:ty> $($tail:tt)*) => (
 
