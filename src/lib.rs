@@ -1643,6 +1643,28 @@ mod test {
             }
 
             #[test]
+            fn from_array_ref() {
+                // we just test if there is a impl for a arbitrary len
+                // which here is good enough but far from complete coverage!
+                let array = [11; 100];
+                let vec = Vec1::try_from(&array).unwrap();
+                assert_eq!(vec.iter().sum::<i32>(), 1100);
+
+                Vec1::try_from([0u8; 0]).unwrap_err();
+            }
+
+            #[test]
+            fn from_array_mut() {
+                // we just test if there is a impl for a arbitrary len
+                // which here is good enough but far from complete coverage!
+                let mut array = [11; 100];
+                let vec = Vec1::try_from(&mut array).unwrap();
+                assert_eq!(vec.iter().sum::<i32>(), 1100);
+
+                Vec1::try_from([0u8; 0]).unwrap_err();
+            }
+
+            #[test]
             fn from_binary_heap() {
                 use std::collections::BinaryHeap;
                 let mut heap = BinaryHeap::new();
@@ -1992,6 +2014,19 @@ mod test {
             fn from_vec1() {
                 let boxed = Box::<[u8]>::from(vec1![99u8, 23, 4]);
                 assert_eq!(&*boxed, &[99u8, 23, 4]);
+            }
+        }
+    }
+
+    mod BoxedArray {
+
+        mod TryFrom {
+            use std::boxed::Box;
+
+            #[test]
+            fn from_vec1() {
+                Box::<[u8; 4]>::try_from(vec1![1u8, 2, 3, 4]).unwrap();
+                Box::<[u8; 4]>::try_from(vec1![1u8, 2]).unwrap_err();
             }
         }
     }
