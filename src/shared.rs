@@ -85,6 +85,7 @@ macro_rules! shared_impl {
                 hash::{Hash, Hasher},
                 ops::{Deref, DerefMut, Index, IndexMut, RangeBounds},
                 slice::SliceIndex,
+                num::NonZeroUsize,
             };
             use alloc::{vec::Vec, boxed::Box};
 
@@ -174,7 +175,7 @@ macro_rules! shared_impl {
                 }
 
 
-                /// Truncates the `SmalVec1` to given length.
+                /// Truncates this vector to given length.
                 ///
                 /// # Errors
                 ///
@@ -188,6 +189,11 @@ macro_rules! shared_impl {
                     } else {
                         Err(Size0Error)
                     }
+                }
+
+                /// Truncates this vector to given length.
+                pub fn truncate_nonzero(&mut self, len: NonZeroUsize) {
+                    self.0.truncate(len.get())
                 }
 
                 /// Truncates the `SmalVec1` to given length.
@@ -479,6 +485,14 @@ macro_rules! shared_impl {
                     }
                 }
 
+                /// See [`Vec::resize_with()`]
+                pub fn resize_with_nonzero<F>(&mut self, new_len: NonZeroUsize, f: F)
+                where
+                    F: FnMut() -> $item_ty
+                {
+                    self.0.resize_with(new_len.get(), f);
+                }
+
                 /// See [`Vec::resize_with()`] but fails if it would resize to length 0.
                 #[deprecated(
                     since = "1.8.0",
@@ -643,6 +657,11 @@ macro_rules! shared_impl {
                         self.0.resize(len, value);
                         Ok(())
                     }
+                }
+
+                /// See [`Vec::resize()`].
+                pub fn resize_nonzero(&mut self, len: NonZeroUsize, value: $item_ty) {
+                    self.0.resize(len.get(), value);
                 }
 
                 /// See [`Vec::resize()`] but fails if it would resize to length 0.
