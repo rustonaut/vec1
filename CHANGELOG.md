@@ -1,6 +1,10 @@
 
 # Change Log
 
+## Version 1.11.1 (23.03.2024)
+
+- Fix `package.rust-version` in `Cargo.toml`
+
 ## Version 1.11.0 (23.03.2024)
 
 - Increased minimal rust version to 1.74.

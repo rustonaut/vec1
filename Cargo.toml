@@ -1,5 +1,5 @@
 [package]
-version = "1.11.0"
+version = "1.11.1"
 authors = ["Philipp Korber <philipp@korber.dev>"]
 categories = ["data-structures"]
 description = "a std Vec wrapper assuring that it has at least 1 element"
@@ -10,7 +10,7 @@ name = "vec1"
 readme = "./README.md"
 repository = "https://github.com/rustonaut/vec1/"
 edition = "2021"
-rust-version = "1.57"
+rust-version = "1.74"
 
 [features]
 default = ["std"]
