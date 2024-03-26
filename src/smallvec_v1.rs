@@ -318,6 +318,7 @@ mod tests {
     mod SmallVec1 {
         #![allow(non_snake_case)]
         use super::super::*;
+        use core::num::NonZeroUsize;
         use std::{
             borrow::{Borrow, BorrowMut, ToOwned},
             cmp::Ordering,
@@ -745,6 +746,12 @@ mod tests {
         fn len() {
             let a: SmallVec1<[u8; 4]> = smallvec1![1, 3];
             assert_eq!(a.len(), 2);
+        }
+
+        #[test]
+        fn len_nonzero() {
+            let a: SmallVec1<[u8; 4]> = smallvec1![1, 3];
+            assert_eq!(a.len_nonzero(), NonZeroUsize::new(2).unwrap());
         }
 
         #[test]

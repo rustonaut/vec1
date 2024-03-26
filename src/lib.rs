@@ -793,6 +793,7 @@ mod test {
     }
 
     mod Vec1 {
+        use core::num::NonZeroUsize;
         use proptest::prelude::*;
         use std::panic::catch_unwind;
 
@@ -1172,6 +1173,12 @@ mod test {
         fn len() {
             let a = vec1![12u8, 4, 6, 2, 3];
             assert_eq!(a.len(), 5);
+        }
+
+        #[test]
+        fn len_nonzero() {
+            let a = vec1![12u8, 4, 6, 2, 3];
+            assert_eq!(a.len_nonzero(), NonZeroUsize::new(5).unwrap());
         }
 
         #[test]

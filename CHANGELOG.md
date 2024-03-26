@@ -3,14 +3,16 @@
 
 ## Version 1.12.0 (pending)
 
+- Added `len_nonzero`.
+
 ## Version 1.11.1 (23.03.2024)
 
-- Fix `package.rust-version` in `Cargo.toml`
+- Fix `package.rust-version` in `Cargo.toml`.
 
 ## Version 1.11.0 (23.03.2024)
 
 - Increased minimal rust version to 1.74.
-- Relax lifetime constraints on `{try_,}mapped_{ref,mut}`
+- Relax lifetime constraints on `{try_,}mapped_{ref,mut}`.
 - Added new proxy functions for `Vec`
   - `try_reserve`
   - `try_reserve_exact`

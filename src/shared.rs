@@ -196,6 +196,11 @@ macro_rules! shared_impl {
                     self.0.truncate(len.get())
                 }
 
+                /// Returns the len as a [`NonZeroUsize`]
+                pub fn len_nonzero(&self) -> NonZeroUsize {
+                    NonZeroUsize::new(self.len()).unwrap()
+                }
+
                 /// Truncates the `SmalVec1` to given length.
                 ///
                 /// # Errors
