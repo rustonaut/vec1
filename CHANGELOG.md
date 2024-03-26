@@ -1,6 +1,8 @@
 
 # Change Log
 
+## Version 1.12.0 (pending)
+
 ## Version 1.11.1 (23.03.2024)
 
 - Fix `package.rust-version` in `Cargo.toml`
