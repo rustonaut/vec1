@@ -1,7 +1,7 @@
 
 # Change Log
 
-## Version 1.12.0 (pending)
+## Version 1.12.0 (27.03.2024)
 
 - Added `len_nonzero`.
 
