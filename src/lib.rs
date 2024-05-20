@@ -756,7 +756,8 @@ where
         if N == 0 {
             Err(Size0Error)
         } else {
-            Ok(Self(value.into()))
+            // TODO: as_slice can be removed when MSRV is bumped to 1.74
+            Ok(Self(value.as_slice().into()))
         }
     }
 }
@@ -771,7 +772,8 @@ where
         if N == 0 {
             Err(Size0Error)
         } else {
-            Ok(Self(value.into()))
+            // TODO: as_slice can be removed when MSRV is bumped to 1.74
+            Ok(Self(value.as_slice().into()))
         }
     }
 }
