@@ -6,9 +6,13 @@
 Names sorted alphabetically by github nickname.
 Contributions ordered by PR number.
 
-## Ben Schulz  @benschulz
+## Ben Schulz @benschulz
 
 - [Relax lifetime constraints on mapped_ref and mapped_mut](https://github.com/rustonaut/vec1/pull/30)
+
+## dahlbaek @dahlbaek
+
+- [Reduce rust-version to 1.71.1](https://github.com/rustonaut/vec1/pull/34)
 
 ## eignnx @eignnx
 

@@ -1,7 +1,9 @@
 
 # Change Log
 
-## Version 1.13.0 (pending)
+## Version 1.12.1 (25.05.2024)
+
+- Reduced minimal rust version to 1.71.1
 
 ## Version 1.12.0 (27.03.2024)
 
