@@ -1,6 +1,6 @@
 //! This crate provides a `Vec` wrapper (`Vec1`) which guarantees to have at least 1 element.
 //!
-//! This can be useful if you have a API which accepts one ore more ofe a kind.
+//! This can be useful if you have a API which accepts one or more of a kind.
 //! Instead of accepting a `Vec` and returning an error if it's empty a `Vec1`
 //! can be used assuring there is at least 1 element and through this reducing
 //! the number of possible error causes.
