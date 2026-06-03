@@ -1021,6 +1021,24 @@ mod tests {
             .is_err());
         }
 
+        #[test]
+        fn min() {
+            let a: SmallVec1<[u8; 4]> = smallvec1![12, 13, 5, 20, 9];
+            assert_eq!(a.min(), &5);
+
+            let b: SmallVec1<[u8; 4]> = smallvec1![42];
+            assert_eq!(b.min(), &42);
+        }
+
+        #[test]
+        fn max() {
+            let a: SmallVec1<[u8; 4]> = smallvec1![12, 13, 5, 20, 9];
+            assert_eq!(a.max(), &20);
+
+            let b: SmallVec1<[u8; 4]> = smallvec1![42];
+            assert_eq!(b.max(), &42);
+        }
+
         #[cfg(feature = "serde")]
         mod serde {
             use super::super::super::*;

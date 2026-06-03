@@ -1366,6 +1366,24 @@ mod test {
         }
 
         #[test]
+        fn min() {
+            let a = vec1![12u8, 13, 5, 20, 9];
+            assert_eq!(a.min(), &5u8);
+
+            let b = vec1![42u8];
+            assert_eq!(b.min(), &42u8);
+        }
+
+        #[test]
+        fn max() {
+            let a = vec1![12u8, 13, 5, 20, 9];
+            assert_eq!(a.max(), &20u8);
+
+            let b = vec1![42u8];
+            assert_eq!(b.max(), &42u8);
+        }
+
+        #[test]
         fn from_vec_push() {
             assert_eq!(Vec1::from_vec_push(std::vec![], 1u8), vec1![1]);
             assert_eq!(Vec1::from_vec_push(std::vec![1, 2], 3u8), vec1![1, 2, 3]);
