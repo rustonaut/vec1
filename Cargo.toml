@@ -1,5 +1,5 @@
 [package]
-version = "1.12.1"
+version = "1.13.0"
 authors = ["Philipp Korber <philipp@korber.dev>"]
 categories = ["data-structures"]
 description = "a std Vec wrapper assuring that it has at least 1 element"
@@ -41,7 +41,9 @@ smallvec-v1-write = ["std", "smallvec_v1_/write"]
 
 [dependencies]
 # Is a feature!
-serde = { version = "1.0", optional = true, features = ["derive"], default-features=false }
+serde = { version = "1.0", optional = true, features = [
+  "derive",
+], default-features = false }
 # In the future we will support smallvec v1 and v2 so if we had
 # a optional dependency called smallvec people might acidentally
 # pull it in as feature and create anoyences wrt. backward compatibility.

@@ -174,7 +174,6 @@ macro_rules! shared_impl {
                     self.0.first_mut().unwrap()
                 }
 
-
                 /// Truncates this vector to given length.
                 ///
                 /// # Errors
@@ -677,6 +676,30 @@ macro_rules! shared_impl {
                 #[inline(always)]
                 pub fn try_resize(&mut self, len: usize, value: $item_ty) -> Result<(), Size0Error> {
                     self.resize(len, value)
+                }
+            }
+
+            impl<$t> $name<$t>
+            where
+                $item_ty: Ord,
+                $($tb : $trait,)?
+            {
+                /// Returns a reference to the minimum element in the vector.
+                ///
+                /// As this vector always contains at least one element, this always returns a value
+                /// instead of an `Option` (unlike `Iterator::min`).
+                pub fn min(&self) -> &$item_ty {
+                    //UNWRAP_SAFE: len is at least 1
+                    self.0.iter().min().unwrap()
+                }
+
+                /// Returns a reference to the maximum element in the vector.
+                ///
+                /// As this vector always contains at least one element, this always returns a value
+                /// instead of an `Option` (unlike `Iterator::max`).
+                pub fn max(&self) -> &$item_ty {
+                    //UNWRAP_SAFE: len is at least 1
+                    self.0.iter().max().unwrap()
                 }
             }
 
